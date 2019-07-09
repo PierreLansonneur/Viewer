@@ -1,7 +1,7 @@
 # Viewer
 Some useful radiotherapy tools
 
-![](https://github.com/PierreLansonneur/Viewer/blob/master/output/screenshot.png)
+![](https://github.com/PierreLansonneur/Viewer/blob/master/output/screenshot.png){:height="50%" width="50%"}
 
 #### launch the viewer 
 `ipython Main.py &`
