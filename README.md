@@ -1,6 +1,6 @@
 # Viewer
 Some useful radiotherapy tools
-<img src="https://github.com/PierreLansonneur/Viewer/blob/master/output/screenshot.png" width="200">
+
 ![](https://github.com/PierreLansonneur/Viewer/blob/master/output/screenshot.png)
 
 #### launch the viewer 
