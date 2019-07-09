@@ -1,9 +1,9 @@
 # analysis
 Some useful radiotherapy tools
 
-####Inline code
+#### Inline code
 
-`$ ipython Main.py &`
+`ipython Main.py &`
 
 ### Features
 
