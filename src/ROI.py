@@ -1,3 +1,9 @@
+###################################################
+#   	      Import RT-STRUCT files
+# 		   	----
+#           	P. Lansonneur 2019
+###################################################
+
 def open_ROI(filename=None): 
 	"""
 	Open a RT-struct file with .dcm extension
