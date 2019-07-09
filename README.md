@@ -1,8 +1,10 @@
+# Viewer
 Some useful radiotherapy tools
 
-### launch the viewer `ipython Main.py &`
+#### launch the viewer 
+`ipython Main.py &`
 
-### Features
+#### Features
 
 - Visualize CT DICOM files
 - Import RT-Dose files
@@ -10,7 +12,7 @@ Some useful radiotherapy tools
 - Import RT-PLAN files
 - Create TOPAS MC files for PBS and DS
 
-### Dependencies
+#### Dependencies
 
 - Python 2.7
 - Tkinter `sudo apt-get install python-tk`
