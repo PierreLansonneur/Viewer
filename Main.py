@@ -47,7 +47,6 @@ ID=''							# Patient ID
 low_contrast = high_contrast = inv_scale = False	# lower/raise contrast, invert greyscale
 revX1 = revX2 = revX3  = False				# reverse X axis
 revY1 = revY2 = revY3 = False				# reverse Y axis
-#rot1 = rot2 = rot3 = False				# rotate axes
 rot1 = rot2 = rot3 = True
 w1_moved = w2_moved = w3_moved = w4_moved = False	# did sliders move? 
 profile_show = False					# show profile
@@ -73,7 +72,6 @@ spacing_dosi = [1, 1, 1]				# dosi spacing
 dosi_open = False					# is dosi opened?
 isodose_show = False					# show isodoses
 levels = np.array([0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]) 	# isodose levels
-#levels = np.array([0.5,0.6,0.7,0.75,0.8,0.85,0.9,1]) 	# isodose levels
 Dvar = IntVar(window)                                   # dose display method
 Dvar.set(1)                                             # normalize to the max
 coeff_D_PTV = np.nan                                    # PTV average dose
@@ -93,7 +91,6 @@ RP_crop_show = False					# show volume of calculation
 filename_RP = None    
 crop_RP = None
 keepCTDim = False                                       # make matrix dimensions equal to CT dimensions
-#keepCTDim = True                                       # make matrix dimensions equal to CT dimensions
 
 poly_Espread 	= np.poly1d([-0.00000023, 0.00008559, -0.01205498, 1.23066909])		# energy spread
 poly_width 	= np.poly1d([-0.00000143, 0.00086454, -0.19620932, 21.66378475])	# sigma (mm)
@@ -236,12 +233,7 @@ toolmenu.add_command(label="Profile...", command=Window_Profile)
 toolmenu.add_command(label="Histogram...", command=VolumeHistogram)
 toolmenu.add_command(label="Gamma...", command=Window_Gamma)
 toolmenu.add_command(label="Iso-surface...", command=VTK_iso)
-"""
-sub3Dmenu = Menu(toolmenu, tearoff=0)
-toolmenu.add_cascade(label="3D",menu=sub3Dmenu)
-sub3Dmenu.add_command(label="Iso-surface...", command=VTK_iso)
-sub3Dmenu.add_command(label="volume display", command=VTK_vol)
-"""
+
 ### ROI menu
 roimenu = Menu(menubar, tearoff=0)
 menubar.add_cascade(label="Structures", menu=roimenu)
@@ -256,6 +248,7 @@ menubar.add_cascade(label="More", menu=helpmenu)
 helpmenu.add_command(label="File infos", command=FileInfo)
 helpmenu.add_command(label="About...", command=about)
 
+### Demo command
 menubar.add_command(label="Demo", command=Demo)
 
 print ''
