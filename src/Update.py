@@ -1,5 +1,13 @@
-def Clear_axes(ClearAll = False):
+###################################################
+#   	      	Update Viewer axes
+# 		   	----
+#           	P. Lansonneur 2019
+###################################################
 
+def Clear_axes(ClearAll = False):
+	"""
+	Clear axes
+	"""
 	if (w4.get()>0)or((ROI_open==True)and(ROI_show==True)) or ((dosi_open == True)and(isodose_show == True)):
 		if(w1_moved == True)or(w4.get()>0):
 			for ax in [ax1, ax4]: 
@@ -203,5 +211,3 @@ def Update():
 	if c_scale=='USER':		SetDisplayRange(0,30)
 
 	toolbar.draw()
-
-
