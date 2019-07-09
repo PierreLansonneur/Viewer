@@ -1,3 +1,9 @@
+###################################################
+#   	       Gamma index analysis
+# 		   	----
+#           	P. Lansonneur 2019
+###################################################
+
 def Window_Gamma():
         """
         Display Gamma index map and passing rate
