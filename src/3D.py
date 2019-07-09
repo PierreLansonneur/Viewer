@@ -1,7 +1,7 @@
 ###################################################
-#   Display iso surface and volume from numpy array 
+#   	      3D visualization tools
 # 		   	----
-#           	P. Lansonneur 2018
+#           	P. Lansonneur 2019
 ###################################################
 import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
