@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-
+v###################################################
+#   	      General Viewer functions
+# 		   	----
+#           	P. Lansonneur 2019
+###################################################
 def on_key(event):
 	if event.key == 'control':
 		if toolbar._active == 'PAN':	toolbar.release_pan(event)
@@ -681,9 +685,9 @@ def Demo():
 	file_path_ROI = dir_ini+ID+'/pi/RS'+ID+'.dcm'
 	file_path_RP = dir_ini+ID+'/pi/RP'+ID+'.dcm'
 
-	#OpenDicomSerie(dirname_ct)
+	OpenDicomSerie(dirname_ct)
 	#OpenFile(file_path_dosi)
-	OpenFile(dir_ini+ID+'/CT'+ID+'.mhd')
+	#OpenFile(dir_ini+ID+'/CT'+ID+'.mhd')
 	OpenDosi(file_path_dosi)
 	#OpenDosi(dir_ini+ID+'/LET/1mm/merged.dcm')
 	#OpenDosi(dir_ini+ID+'/LET/1mm/LET_PS1N.dcm')
@@ -703,12 +707,9 @@ def Demo():
 	w3.set(w3_set)
 
         #Set_axes_lim_init()
-
         #Rescale(tag='dosi')
         #Rescale(tag='CT')
         #CropDosi(0)
         #ROI_DVH_analysis()
 	Update_all()      
         #Window_Gamma()
-
-
