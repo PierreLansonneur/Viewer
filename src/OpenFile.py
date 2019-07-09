@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+###################################################
+#   	     Open DICOM and .mhd files
+# 		   	----
+#           	P. Lansonneur 2019
+###################################################
+
 def OpenFile(filename=None): 
 	"""
 	Open a .dcm or a .mhd file
