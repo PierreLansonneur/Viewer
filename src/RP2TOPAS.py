@@ -1,7 +1,7 @@
 #########################################################
 # Read RP dicom file and create associated TOPAS files
-# 		    		  (PBS & DS)
-#	 			 P. Lansonneur - 2018
+# 		     (PBS & DS)
+#	 	P. Lansonneur - 2019
 #########################################################
 '''
 # Crop limits, 102771
