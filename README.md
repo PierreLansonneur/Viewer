@@ -2,7 +2,7 @@
 Some useful radiotherapy tools
 
 ![](https://github.com/PierreLansonneur/Viewer/blob/master/output/screenshot_.PNG)
-
+<img src="https://github.com/PierreLansonneur/Viewer/blob/master/output/capture.jpg" width="300" />
 #### launch the viewer 
 `ipython Main.py &`
 
