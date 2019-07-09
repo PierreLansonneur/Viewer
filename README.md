@@ -1,9 +1,6 @@
-# analysis
 Some useful radiotherapy tools
 
-#### launch viewer
-
-`ipython Main.py &`
+### launch the viewer `ipython Main.py &`
 
 ### Features
 
