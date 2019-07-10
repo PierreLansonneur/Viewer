@@ -36,7 +36,7 @@ def VTK_iso_show(event=None):
 	mini = float(vtk_s1.get())
 	window_VTK_iso.destroy()
 
-	if ((ROI_open==True)and(ROI_show == True)):	VTK_isosurface(ROI_3D(ROI_infos, 23), spacing, 0.5, 1., True, True)
+	if ((ROI_open==True)and(ROI_show == True)):	VTK_isosurface(ROI_3D(ROI_infos, 0), spacing, 0.5, 1., True, True)
 	elif ((dosi_open==True)and(isodose_show == True)):	VTK_isosurface(dosi, spacing_dosi, 0.01*mini, 0.5, True, False)
 	else:	VTK_isosurface(volume, spacing, mini, 0.3, False, True)
 
