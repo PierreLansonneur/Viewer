@@ -1,26 +1,8 @@
 #########################################################
-# Read RP dicom file and create associated TOPAS files
+# 	Convert RT-Plan dicom to TOPAS file
 # 		     (PBS & DS)
 #	 	P. Lansonneur - 2019
 #########################################################
-'''
-# Crop limits, 102771
-xmin_RP, xmax_RP = 120, 385 # 0, dim_z
-ymin_RP, ymax_RP = 40 , 380 # 0, dim_y
-zmin_RP, zmax_RP = 120, 322 #357 #337 # 0, dim_x
-'''
-'''
-# Crop limits, 12420
-xmin_RP, xmax_RP = 115, 400 # 0, dim_z
-ymin_RP, ymax_RP = 45 , 435 # 0, dim_y
-zmin_RP, zmax_RP = 150, 340 # 0, dim_x
-'''
-'''
-# Crop limits, 104005
-xmin_RP, xmax_RP = 75, 435
-ymin_RP, ymax_RP = 130, 370
-zmin_RP, zmax_RP = 60, 210
-'''
 
 def UpdateRPBoundingBox(ext7,ext8,ext9, rot1, rot2, rot3, ax_):
         """
@@ -773,11 +755,10 @@ def check_DS(BeamName, BlockData, CompensatorThicknessData, ext):
 	canvas2.grid(row=0, column=0)
 	ax7 = fig2.gca()
 	ax7.axis('equal')
-	P.set_cmap('jet')
 
 	### compensator
 	#comp = ax7.imshow(CompensatorThicknessData[0::10,0::10], extent=ext)
-	comp = ax7.imshow(CompensatorThicknessData, extent=ext)
+	comp = ax7.imshow(CompensatorThicknessData, extent=ext, cmap='jet')
 	ax7.set_xlabel('x (mm)')
 	ax7.set_ylabel('y (mm)')
 	ax7.set_title('Beam-Eye View')
@@ -794,4 +775,3 @@ def check_DS(BeamName, BlockData, CompensatorThicknessData, ext):
 
 	#P.savefig(BeamName+'.pdf',  bbox_inches='tight', dpi=300)
 	graph2.draw()
-
