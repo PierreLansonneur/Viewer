@@ -4,18 +4,28 @@
 # 		   	----
 #           	P. Lansonneur 2019
 ###################################################
+
 def on_key(event):
+        """
+        run when key is pressed 
+        """
 	if event.key == 'control':
 		if toolbar._active == 'PAN':	toolbar.release_pan(event)
 		if toolbar._active == 'ZOOM':	toolbar.release_zoom(event)
 
-def on_mousewheel(event):	
+def on_mousewheel(event):
+        """
+        run when mouse scrolled
+        """	
 	global w1, w2, w3
 	if event.inaxes==ax1:	w1.set(w1.get()-event.step)
 	if event.inaxes==ax2:	w2.set(w2.get()-event.step)
 	if event.inaxes==ax3:	w3.set(w3.get()-event.step)
 
 def on_press(event):
+        """
+        run when clicked
+        """        
 	global xp1, yp1, profile_show, ax7, graph2
 
         on_key(event)
@@ -34,13 +44,14 @@ def on_press(event):
 		try:
 			profile_show = False
 			ax7.clear()
-			ax7.set_xticks([])
 			graph2.draw()
 
 		except Exception:	pass
 
 def on_motion(event):
-
+        """
+        run when mouse is moved
+        """ 
         on_key(event)
 
 	if event.key == 'control' and profile_show and event.button == 1:
@@ -50,7 +61,10 @@ def on_motion(event):
 		event.inaxes.plot([xp1,event.xdata], [yp1,event.ydata], 'bo:')
 		graph1.draw()
 
-def on_release(event):	
+def on_release(event):
+        """
+        run when click is released
+        """ 
 	global xp1, yp1, xp2, yp2, profile_show, profile_ax
 
 	if profile_show:
@@ -61,47 +75,49 @@ def on_release(event):
 	Update_all()
 
 def Window_Profile():
+        """
+        Display profile along a line
+       	ctrl-click on the axis to display
+        """
 	global ax7, graph2, fig2
 
 	window_profile = Toplevel(window)
-	window_profile.geometry("{0}x{1}+{2}+{3}".format(500, 200, int(0.53*w_px), 0))
-	#window_profile.geometry("{0}x{1}+{2}+{3}".format(450, 150, int(0.53*w_px), 0))
+	window_profile.geometry("{0}x{1}+{2}+{3}".format(int(0.365*w_px), 295, int(0.53*w_px), 0))
 	window_profile.title('Profile (ctrl-click to select)')
 	fig2 = P.figure(facecolor='lightgrey')
-	fig2.set_size_inches(5,2)
+	fig2.set_size_inches(0.35*w_in, 0.27*h_in)
 	graph2 = FigureCanvasTkAgg(fig2, master=window_profile)
 	canvas2 = graph2.get_tk_widget()
-	canvas2.grid(row=0, column=0, sticky=W+E+N+S)
+	canvas2.grid(row=0, column=0, columnspan=2, sticky=W+E+N+S)
 	ax7 = fig2.gca()
-	#ax7.set_xticks([])
 	P.tight_layout()
+
+	toolbar_frame2 = Frame(window_profile)
+	toolbar2 = NavigationToolbar2TkAgg( graph2, toolbar_frame2 )
+	toolbar_frame2.grid(row=1,column=0, columnspan=1, sticky=W+E+N+S)
+
+	pr_bt1 = Button(window_profile, text="Export..", command=SaveProfile)
+	pr_bt1.grid(row=1,column=1,columnspan=1,sticky=E+N+S)
 
 	try:    Update_profile()
 	except Exception:	pass
-
-        """
-	toolbar_frame2 = Frame(window_profile)
-	toolbar2 = NavigationToolbar2TkAgg( graph2, toolbar_frame2 )
-	toolbar_frame2.grid(row=4,column=0, columnspan=4, sticky=W+E+N+S)
-        """
 
 def PVDR(array, prominence_):
         """
        	return PVDR and associated error
         prominence_ is the minimal prominence of peaks
         """
-
         array = array.astype(float)
+
 	# find peaks and heights
 	peaks, properties = find_peaks(array, prominence=prominence_)
-	#peaks, properties = find_peaks(array, distance=100, prominence=prominence_)
 
 	# PVDR and associated error
-        PVDR = err_PVDR = PVDR_prezado = np.nan
+        PVDR = err_PVDR = np.nan
 
-        if (len(peaks)>1): 
+        if (len(peaks)>1):
+
                 tmp = np.argmax(array[peaks])
-                #PVDR_prezado = np.max(array[peaks])/(np.min(array[peaks[tmp]-50:peaks[tmp]+50]))
 
                 np.delete(peaks, tmp)
                 np.delete(properties['prominences'], tmp)
@@ -112,11 +128,14 @@ def PVDR(array, prominence_):
 	        err_max = np.std(array[peaks])
 	        err_min = np.std(array[peaks] - properties['prominences'])
 	        err_PVDR = (max_/min_)*np.sqrt( (err_max/max_)**2 + (err_min/min_)**2 )
-	        #err_PVDR = np.std(array[peaks]/(array[peaks] - properties['prominences']))
 
-        return PVDR, err_PVDR, 1#PVDR_prezado
+        return PVDR, err_PVDR
 
 def Update_profile():
+        """
+       	Update profile 
+        """
+        global dist_, prof_
 
 	if dosi_open and isodose_show:
 		xp1_vox, yp1_vox = mm2voxel(xp1, yp1, profile_ax, tag='dosi')
@@ -128,29 +147,38 @@ def Update_profile():
 		prof = AxisImage(profile_ax)
 
 	ax7.clear()
-	#ax7.set_xticks([])
 	ax7.set_xlabel('x (mm)')
         ax7.xaxis.set_label_coords(1.1,-0.07)
 
 	ax7.set_ylabel('Dose (a.u.)')
         P.tight_layout()
-        #dist = np.sqrt( (yp2-yp1)**2 + (xp2-xp1)**2 )
 
 	xp,yp = np.linspace(xp1_vox,xp2_vox,1000), np.linspace(yp1_vox,yp2_vox,1000)
         dist_ = np.linspace(0,np.sqrt( (yp2-yp1)**2 + (xp2-xp1)**2 ),1000)
         prof_ = map_coordinates(prof, np.vstack((xp,yp)))
 
-        #p_seuil = np.nanmax(dosi)
-        #print '*\t{0:.2f} +/- {1:.2f}\t{2:.2f}'.format(PVDR(prof_, 0.1*p_seuil)[0],PVDR(prof_, 0.1*p_seuil)[1],PVDR(prof_, 0.1*p_seuil)[2])
-        #ax7.set_title('PVDR : {0:.1f} +/- {1:.1f} ({2:.2f})'.format(PVDR(prof_, 0.1*p_seuil)[0],PVDR(prof_, 0.1*p_seuil)[1],PVDR(prof_, 0.1*p_seuil)[2]))
+        #p_seuil = 0.05*np.nanmax(prof_)
+        #p_seuil = 0.1*np.nanmax(prof_)
+        #ax7.set_title( 'PVDR : {0:.1f} +/- {1:.1f}'.format(PVDR(prof_, p_seuil)[0],PVDR(prof_, p_seuil)[1]) )
 
 	ax7.plot(dist_, prof_)
 	graph2.draw()
 
-	#with open('tmp_profile.txt', 'a') as f:
-	with open('tmp_profile.txt', 'w') as f:
-		for i,j in zip(dist_, prof_):
-			f.write('{0:.3f}, {1}\n'.format(i,j))
+
+def SaveProfile():
+	"""
+	Save profile as a .txt file
+	"""
+	types = [('text', '*.txt')]
+	filename = tkFileDialog.asksaveasfilename(initialdir = dir_ini+'output', initialfile='profile',filetypes=types)
+
+        try:
+	        with open(filename, 'w') as f:
+                        f.write('x (mm), Dose (a.u.)\n')
+		        for i,j in zip(dist_, prof_):   f.write('{0:.3f}, {1}\n'.format(i,j))
+                	print('profile saved !')
+
+	except Exception:	pass
 
 def mm2voxel(x_mm,y_mm,ax,tag='CT'):
 	"""
@@ -161,12 +189,17 @@ def mm2voxel(x_mm,y_mm,ax,tag='CT'):
 
 	x_vox, y_vox = 0,0
 
-	if ax==ax1:			x_vox, y_vox = int((orig[2]-y_mm)/sp[2]), int((orig[1]-x_mm)/sp[1])
-	if (ax==ax1)and(rot1==True):	x_vox, y_vox = int((orig[2]-x_mm)/sp[2]), int((orig[1]-y_mm)/sp[1])
-	if ax==ax2:			x_vox, y_vox = int((orig[2]-y_mm)/sp[2]), int((-orig[0]+x_mm)/sp[0])
-	if (ax==ax2)and(rot2==True):	x_vox, y_vox = int((orig[2]-x_mm)/sp[2]), int((-orig[0]+y_mm)/sp[0])
-	if ax==ax3:			x_vox, y_vox = int((orig[1]-y_mm)/sp[1]), int((-orig[0]+x_mm)/sp[0])
-	if (ax==ax3)and(rot3==True):	x_vox, y_vox = int((orig[1]-x_mm)/sp[1]), int((-orig[0]+y_mm)/sp[0])
+        if(len(np.shape(volume))==3):
+	        if ax==ax1:			x_vox, y_vox = int((orig[2]-y_mm)/sp[2]), int((orig[1]-x_mm)/sp[1])
+	        if (ax==ax1)and(rot1==True):	x_vox, y_vox = int((orig[2]-x_mm)/sp[2]), int((orig[1]-y_mm)/sp[1])
+	        if ax==ax2:			x_vox, y_vox = int((orig[2]-y_mm)/sp[2]), int((-orig[0]+x_mm)/sp[0])
+	        if (ax==ax2)and(rot2==True):	x_vox, y_vox = int((orig[2]-x_mm)/sp[2]), int((-orig[0]+y_mm)/sp[0])
+	        if ax==ax3:			x_vox, y_vox = int((orig[1]-y_mm)/sp[1]), int((-orig[0]+x_mm)/sp[0])
+	        if (ax==ax3)and(rot3==True):	x_vox, y_vox = int((orig[1]-x_mm)/sp[1]), int((-orig[0]+y_mm)/sp[0])
+
+        if(len(np.shape(volume))==2):
+	        if (ax==ax1):			x_vox, y_vox = int((orig[0]-y_mm)/sp[0]), int((orig[1]-x_mm)/sp[1])
+	        if (ax==ax1)and(rot1==True):	x_vox, y_vox = int((orig[0]-x_mm)/sp[0]), int((orig[1]-y_mm)/sp[1])
 
 	return x_vox, y_vox
 
@@ -237,51 +270,51 @@ def FileInfo():
 	window_info = Toplevel(window)
 	window_info.title('File properties')
 
-	try:
-		disp0 = Label(window_info, text=' CT : '+filename_CT.rsplit('/', 1)[-1])
-		disp1 = Label(window_info, text='  size :\t{0}\t{1}\t{2}\tpix\t'.format(dim_x, dim_y, dim_z))
-		disp2 = Label(window_info, text='  size :\t{0:.1f}\t{1:.1f}\t{2:.1f}\tmm\t'.format(dim_x*spacing[0], dim_y*spacing[1], dim_z*spacing[2]))
-		disp3 = Label(window_info, text='  spacing :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(spacing[0], spacing[1], spacing[2]))
-		disp4 = Label(window_info, text='  origin :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(origin[0], origin[1], origin[2]))
+	#try:
+	disp0 = Label(window_info, text=' CT : '+filename_CT.rsplit('/', 1)[-1])
+	disp1 = Label(window_info, text='  size :\t{0}\t{1}\t{2}\tpix\t'.format(dim_x, dim_y, dim_z))
+	disp2 = Label(window_info, text='  size :\t{0:.1f}\t{1:.1f}\t{2:.1f}\tmm\t'.format(dim_x*spacing[0], dim_y*spacing[1], dim_z*spacing[2]))
+	disp3 = Label(window_info, text='  spacing :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(spacing[0], spacing[1], spacing[2]))
+	disp4 = Label(window_info, text='  origin :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(origin[0], origin[1], origin[2]))
 
-		disp0.grid(row=0, column=0, sticky=W)
-		disp1.grid(row=1, column=0, sticky=W)
-		disp2.grid(row=2, column=0, sticky=W)
-		disp3.grid(row=3, column=0, sticky=W)
-		disp4.grid(row=4, column=0, sticky=W)
+	disp0.grid(row=0, column=0, sticky=W)
+	disp1.grid(row=1, column=0, sticky=W)
+	disp2.grid(row=2, column=0, sticky=W)
+	disp3.grid(row=3, column=0, sticky=W)
+	disp4.grid(row=4, column=0, sticky=W)
 
-		if dosi_open:
-			disp0 = Label(window_info, text='\n Dose : '+filename_dosi.rsplit('/', 1)[-1])
-			disp1 = Label(window_info, text='  size :\t{0}\t{1}\t{2}\tpix\t'.format(dim_x_dosi, dim_y_dosi, dim_z_dosi))
-			disp2 = Label(window_info, text='  size :\t{0:.1f}\t{1:.1f}\t{2:.1f}\tmm\t'.format(dim_x_dosi*spacing_dosi[0], dim_y_dosi*spacing_dosi[1], dim_z_dosi*spacing_dosi[2]))
-			disp3 = Label(window_info, text='  spacing :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(spacing_dosi[0], spacing_dosi[1], spacing_dosi[2]))
-			disp4 = Label(window_info, text='  origin :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(origin_dosi[0], origin_dosi[1], origin_dosi[2]))
+	if dosi_open:
+		disp0 = Label(window_info, text='\n Dose : '+filename_dosi.rsplit('/', 1)[-1])
+		disp1 = Label(window_info, text='  size :\t{0}\t{1}\t{2}\tpix\t'.format(dim_x_dosi, dim_y_dosi, dim_z_dosi))
+		disp2 = Label(window_info, text='  size :\t{0:.1f}\t{1:.1f}\t{2:.1f}\tmm\t'.format(dim_x_dosi*spacing_dosi[0], dim_y_dosi*spacing_dosi[1], dim_z_dosi*spacing_dosi[2]))
+		disp3 = Label(window_info, text='  spacing :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(spacing_dosi[0], spacing_dosi[1], spacing_dosi[2]))
+		disp4 = Label(window_info, text='  origin :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(origin_dosi[0], origin_dosi[1], origin_dosi[2]))
 
-			disp0.grid(row=5, column=0, sticky=W)
-			disp1.grid(row=6, column=0, sticky=W)
-			disp2.grid(row=7, column=0, sticky=W)
-			disp3.grid(row=8, column=0, sticky=W)
-			disp4.grid(row=9, column=0, sticky=W)
+		disp0.grid(row=5, column=0, sticky=W)
+		disp1.grid(row=6, column=0, sticky=W)
+		disp2.grid(row=7, column=0, sticky=W)
+		disp3.grid(row=8, column=0, sticky=W)
+		disp4.grid(row=9, column=0, sticky=W)
 
-		if ROI_open:
-			disp0 = Label(window_info, text='\n RT-struct : '+filename_ROI.rsplit('/', 1)[-1])
-			disp0.grid(row=10, column=0, sticky=W)
+	if ROI_open:
+		disp0 = Label(window_info, text='\n RT-struct : '+filename_ROI.rsplit('/', 1)[-1])
+		disp0.grid(row=10, column=0, sticky=W)
 
-			for ROI_index in range(N_ROI):
-				ROI_color = 255*ROI_infos[ROI_index,5].astype(float)
-				ROI_color = ROI_color.astype(int)
-				ROI_color = '#%02x%02x%02x' % (ROI_color[0], ROI_color[1], ROI_color[2])
-				if(ROI_index<10):	disp1 = Label(window_info, text='  {0}   '.format(ROI_index)+ROI_infos[ROI_index,0].decode('utf-8'))
-				else:	disp1 = Label(window_info, text='  {0} '.format(ROI_index)+ROI_infos[ROI_index,0].decode('utf-8'))
-				disp2 = Label(window_info, text='      ', bg=ROI_color)
-				if(ROI_index<=20):
-					disp1.grid(row=11+ROI_index, column=0, sticky=W)
-					disp2.grid(row=11+ROI_index, column=1, sticky=W)
-				else:
-					disp1.grid(row=-10+ROI_index, column=2, sticky=W)
-					disp2.grid(row=-10+ROI_index, column=3, sticky=W)
+		for ROI_index in range(N_ROI):
+			ROI_color = 255*ROI_infos[ROI_index,5].astype(float)
+			ROI_color = ROI_color.astype(int)
+			ROI_color = '#%02x%02x%02x' % (ROI_color[0], ROI_color[1], ROI_color[2])
+			if(ROI_index<10):	disp1 = Label(window_info, text='  {0}   '.format(ROI_index)+ROI_infos[ROI_index,0].decode('utf-8'))
+			else:	disp1 = Label(window_info, text='  {0} '.format(ROI_index)+ROI_infos[ROI_index,0].decode('utf-8'))
+			disp2 = Label(window_info, text='      ', bg=ROI_color)
+			if(ROI_index<=20):
+				disp1.grid(row=11+ROI_index, column=0, sticky=W)
+				disp2.grid(row=11+ROI_index, column=1, sticky=W)
+			else:
+				disp1.grid(row=-10+ROI_index, column=2, sticky=W)
+				disp2.grid(row=-10+ROI_index, column=3, sticky=W)
 
-	except Exception:	pass
+	#except Exception:	pass
 
 def Yrevert_ax1():
 	global revY1	
@@ -493,20 +526,15 @@ def Set_axes_lim():
 def Set_axes_lim_init():
 	global x1_lim, x2_lim, x3_lim, y1_lim, y2_lim, y3_lim
 
-	x2_lim = x3_lim = (origin[0],origin[0]+dim_x*spacing[0])
-	x1_lim = y3_lim = (origin[1]-dim_y*spacing[1],origin[1])
-	y1_lim = y2_lim = (origin[2]-dim_z*spacing[2],origin[2])
-        """
-        if ID=='12420':
-	        x2_lim = x3_lim = (-90,55)
-	        x1_lim = y3_lim = (-130,130)
-	        y1_lim = y2_lim = (-87,87)
+	if(len(np.shape(volume))==3):
+	        x2_lim = x3_lim = (origin[0],origin[0]+dim_x*spacing[0])
+	        x1_lim = y3_lim = (origin[1]-dim_y*spacing[1],origin[1])
+                y1_lim = y2_lim = (origin[2]-dim_z*spacing[2],origin[2])
 
-        if ID=='102771':
-	        x2_lim = x3_lim = (-70,100)
-	        x1_lim = y3_lim = (-150,100)
-	        y1_lim = y2_lim = (-80,80)
-        """
+	if(len(np.shape(volume))==2):
+                y1_lim = (origin[0]-dim_x*spacing[0],origin[0])
+                x1_lim = (origin[1]-dim_y*spacing[1],origin[1])
+
 	if(rot1 == True):	x1_lim, y1_lim = y1_lim, x1_lim
 	if(rot2 == True):	x2_lim, y2_lim = y2_lim, x2_lim
 	if(rot3 == True):	x3_lim, y3_lim = y3_lim, x3_lim
@@ -675,31 +703,32 @@ def Demo():
 	Test function
 	ID: patient ID
 	"""
+	"""
 	global ID
 
 	ID, w1_set, w2_set, w3_set = '12420', 243, 231, 297# 80, 91, 84
-	#ID, w1_set, w2_set, w3_set = '102771', 70, 157, 127 #191, 323, 233
+	#ID, w1_set, w2_set, w3_set = '102771', 191, 323, 233# 70, 157, 127 #
 
 	dirname_ct = dir_ini+ID+'/CT/'
 	file_path_dosi = dir_ini+ID+'/pi/RD'+ID+'.dcm'
 	file_path_ROI = dir_ini+ID+'/pi/RS'+ID+'.dcm'
 	file_path_RP = dir_ini+ID+'/pi/RP'+ID+'.dcm'
 
-	OpenDicomSerie(dirname_ct)
+	#OpenDicomSerie(dirname_ct)
 	#OpenFile(file_path_dosi)
 	#OpenFile(dir_ini+ID+'/CT'+ID+'.mhd')
-	OpenDosi(file_path_dosi)
+	#OpenDosi(file_path_dosi)
 	#OpenDosi(dir_ini+ID+'/LET/1mm/merged.dcm')
 	#OpenDosi(dir_ini+ID+'/LET/1mm/LET_PS1N.dcm')
 	#OpenDosi(dir_ini+ID+'/test_dosi/Dose_Field_2_105.dcm')
 	#OpenDosi(dir_ini+ID+'/crop/Dose_PS1N_crop.dcm')
-	#OpenDosi(dir_ini+ID+'/ctc6/Dose_Field_123_ctc6.mhd')
-	#OpenDosi(dir_ini+ID+'/ctc4/merged.dcm')
+	#OpenDosi(dir_ini+ID+'/ctc6/merged_Isogray.dcm')
+	#OpenDosi(dir_ini+ID+'/ctc4/merged_Isogray.dcm')
 	#OpenDosi(dir_ini+ID+'/scan_mbrt/Dose_PS1N_ctc4_w700.dcm')
 	#OpenDosi(dir_ini+ID+'/SFUD/merged_.dcm')
 	#OpenDosi(dir_ini+ID+'/SFUD/Dose_Field_3.dcm')
 	#OpenDosi(dir_ini+ID+'/Dose_104005_PD2N.dcm')
-	open_ROI(file_path_ROI)
+	#open_ROI(file_path_ROI)
 	#OpenRP(file_path_RP)
 
 	w1.set(w1_set)
@@ -711,5 +740,7 @@ def Demo():
         #Rescale(tag='CT')
         #CropDosi(0)
         #ROI_DVH_analysis()
-	Update_all()      
+	Update_all()
+        #Window_Profile()
         #Window_Gamma()
+	"""
