@@ -1,6 +1,6 @@
 # Viewer
 
-Viewer is a visualization tool distributed for Linux that can be used to:
+A visualization tool distributed for Linux that can be used to:
 
 - Visualize CT DICOM files,
 - Import RT-Dose files,
@@ -11,10 +11,9 @@ Viewer is a visualization tool distributed for Linux that can be used to:
 <img src="https://github.com/PierreLansonneur/Viewer/blob/master/output/capture.jpg" width="400" />
 
 #### launch the viewer 
-`ipython Main.py &`
+`python Main.py`
 
 #### Dependencies
-
 - Python 2.7
 - Tkinter `sudo apt-get install python-tk`
 - pyDICOM `pip install pydicom`
