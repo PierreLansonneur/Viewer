@@ -276,8 +276,11 @@ def ReadRP(createTopasfile = False, check = True):
 			# Isocenter and Patient translation
 			#IsocenterPosition = [0,0,0]
 			IsocenterPosition = icps[0].IsocenterPosition 	# in mm
-			TransX, TransY, TransZ = PatientTranslation(IsocenterPosition, PatientSupportAngle, crop_RP)
-			if (pss[0].PatientPosition=='HFP'):	TransY, TransZ = -TransY, -TransZ
+                        if(keepCTDim==False):   crop_RP = [wz_min.get()-1, wz_max.get(), wy_min.get()-1, wy_max.get(), wx_min.get()-1, wx_max.get()]
+                        else:                   crop_RP = [0, dim_z,0, dim_y,0, dim_x]
+
+                        TransX, TransY, TransZ = PatientTranslation(IsocenterPosition, PatientSupportAngle, crop_RP)
+			#if (pss[0].PatientPosition=='HFP'):	TransY, TransZ = -TransY, -TransZ
 
                         if(check == True):
 			        print '\n------ Beam',ibs[k].BeamName , '------'
@@ -671,9 +674,12 @@ def CreateApertureFileDS(BeamName,BlockData):
 	"""
 	BlockDataX = BlockData[0::2]
 	BlockDataY = BlockData[1::2]
+
 	with open('./output/'+BeamName+'.ap', 'w') as f:
 		f.write('{0}\n'.format(len(BlockDataX)))
 		for i in range(len(BlockDataX)):	f.write('{0}, {1}\n'.format(BlockDataX[i],BlockDataY[i]))
+
+        print('collimator file {0} created'.format('./output/'+BeamName+'.ap'))
 
 def CreateCompensatorFileDS(BeamName,ircs):
 	"""
@@ -697,6 +703,8 @@ def CreateCompensatorFileDS(BeamName,ircs):
 			f.write('{0} {1} {2} {3}\n'.format(CColumns, -10*CPixelSpacing[1], CPosition[1],  -CPosition[0]-i*10*CPixelSpacing[0]))
 			for j in range(CColumns):	f.write( '{0} '.format( np.nanmax(CompensatorThicknessData_small) - CompensatorThicknessData_small[CRows-i-1,j]) )
 			f.write('\n')
+
+        print('compensator file {0} created'.format('./output/'+BeamName+'.rc'))
 
 def check_PBS(BeamName,E,x,y,UM):
 	"""
