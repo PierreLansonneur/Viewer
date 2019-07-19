@@ -32,14 +32,14 @@ Once a CT is opened, RT-Dose files can be imported via the File >> Import dosime
 
 ### Import RT-struct files
 Once a CT is opened, DICOM RT-Struct files can be imported via the Structures >> Import structures menu. The names and colors of the structures imported can be visualized in the More >> File infos window. Once a RT-Dose file and a DICOM RT-Struct file are opened, you may access to the following tools: 
-•	compute DVH: Calculates the cumulative DVH for every structures
-•	crop Dosimetry: Crop the dose matrix to the extent of the external contour.
-•	normalize dosi to PTV dose: Normalize the dose matrix such that the average dose is equal to 100 in a structure whose the name contains ‘PTV’.
+-	compute DVH: Calculates the cumulative DVH for every structures
+-	crop Dosimetry: Crop the dose matrix to the extent of the external contour.
+-	normalize dosi to PTV dose: Normalize the dose matrix such that the average dose is equal to 100 in a structure whose the name contains ‘PTV’.
  
 ### Import RT-Plan files
 Once a CT is opened, protontherapy DICOM RT-Plan files can be imported via the File >> Open RP file menu. The interface supports files intended for:
-•	Passive Scattering: The collimator contour and compensator thickness are shown for each field (BEV).
-•	Pencil Beam Scanning: The spots position and energy are shown for each field (BEV).
+-	Passive Scattering: The collimator contour and compensator thickness are shown for each field (BEV).
+-	Pencil Beam Scanning: The spots position and energy are shown for each field (BEV).
  
 For each fields, several informations are retrieved such as the range shifter, gantry and table angles, number of spots, etc… For PBS files, you can moreover create a TOPAS MC simulation file for each field. The file is made to be interfaced with the ICPO gantry nozzle geometry (see https://github.com/PierreLansonneur/TOPAS_Gantry for public version of the code). The dose matrix has a default resolution of 0.5 x 0.5 x 0.5 mm3 and the size can be adjusted with the slider
 
