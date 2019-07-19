@@ -9,7 +9,7 @@ def OpenFile(filename=None):
 	"""
 	Open a .dcm or a .mhd file
 	"""
-	global volume, spacing, dim_x, dim_y, dim_z, info, origin, CT_open, filename_CT
+	global volume, spacing, dim_x, dim_y, dim_z, origin, CT_open, filename_CT
 	ct_swap = False
 
 	if(filename==None):
@@ -23,21 +23,24 @@ def OpenFile(filename=None):
 
 	### .dcm file ###
 	if(file_path.endswith('.dcm')):
-		ds = pydicom.read_file(file_path)#,defer_size = '2 MB', force=True)
+		ds = pydicom.read_file(file_path)
 		ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian 
 		volume = ds.pixel_array
-		sp = ds.PixelSpacing
+		spacing[0:1] = ds.PixelSpacing
+	        origin[0:1] = ds.ImagePositionPatient
 
-		#if ("RescaleSlope" in ds):	volume = float(ds.RescaleSlope)*volume
-		#if ("RescaleIntercept" in ds):	volume = volume - float(ds.RescaleIntercept)
-		if ("DoseGridScaling" in ds):	volume = float(ds.DoseGridScaling)*volume
+                if (ds.Modality == 'RTDOSE'):
+		        if ("DoseGridScaling" in ds):	volume = float(ds.DoseGridScaling)*volume
+                else:
+	                if ("RescaleSlope" in ds):	volume = float(ds.RescaleSlope)*volume
+	                if ("RescaleIntercept" in ds):	volume = volume + float(ds.RescaleIntercept)
 
-		spacing = [ float(ds.GridFrameOffsetVector[1] - ds.GridFrameOffsetVector[0]), float(sp[1]),float(sp[0])]
-		origin = ds.ImagePositionPatient
-		origin = [float(origin[2]),float(origin[1]),float(origin[0])]
-		info = 'Name: {0}\nBits allocated: {1}'.format(ds.PatientName, ds.BitsAllocated)
-		if ("PatientPosition" in ds):  ct_swap = (ds.PatientPosition == 'HFS')
-		if ("ImageOrientationPatient" in ds):	ct_swap = (ds.ImageOrientationPatient == [1, 0, 0, 0, 1, 0])
+	        if(len(np.shape(volume))==3):
+		        spacing = [ float(ds.GridFrameOffsetVector[1] - ds.GridFrameOffsetVector[0]), float(spacing[1]),float(spacing[0])]
+		        origin = [float(origin[2]),float(origin[1]),float(origin[0])]
+
+                if ("PatientPosition" in ds):  ct_swap = (ds.PatientPosition == 'HFS')
+                if ("ImageOrientationPatient" in ds):	ct_swap = (ds.ImageOrientationPatient == [1, 0, 0, 0, 1, 0])
 
 		#if ds.SeriesDescription=='PatientLETScorer [MeV/mm/(g/cm3)]':	SetIntensityRange(volume,0,15)
 
@@ -50,22 +53,21 @@ def OpenFile(filename=None):
 		text_file = open(file_path, "r")
 		tmp = text_file.readlines()
 		ct_swap = (tmp[8][-4:-1] == 'RAI')
-		#for i in range(len(tmp)):	info = info + tmp[i]
-
-	if(len(np.shape(volume))==3):	dim_x, dim_y, dim_z = np.shape(volume)[0], np.shape(volume)[1], np.shape(volume)[2]
-
-	if(len(np.shape(volume))==2):	dim_x, dim_y, dim_z = np.shape(volume)[0], np.shape(volume)[1], 1
-
-	#print 'ct type:', volume.dtype
-
-	if(ct_swap == True):
-		volume = np.flip(volume,1) # flip volume
-		volume = np.flip(volume,2) # flip volume
-		spacing[1], spacing[2] = spacing[2], spacing[1]
-		origin[1] = origin[1] + dim_y*spacing[1]
-		origin[2] = origin[2] + dim_z*spacing[2]
 
 	print 'ct_swap:', ct_swap
+
+	if(len(np.shape(volume))==3):
+        	dim_x, dim_y, dim_z = np.shape(volume)[0], np.shape(volume)[1], np.shape(volume)[2]
+
+	        if(ct_swap == True):
+		        volume = np.flip(volume,1) # flip volume
+		        volume = np.flip(volume,2) # flip volume
+		        spacing[1], spacing[2] = spacing[2], spacing[1]
+		        origin[1] = origin[1] + dim_y*spacing[1]
+		        origin[2] = origin[2] + dim_z*spacing[2]
+
+	if(len(np.shape(volume))==2):	dim_x, dim_y, dim_z = np.shape(volume)[0], np.shape(volume)[1], 0
+
 
 	print 'File successfully opened!'
 
@@ -97,7 +99,12 @@ def OpenDicomSerie(dirname=None):
 	sp = ds.PixelSpacing
 	ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 	ct_swap = (ds.PatientPosition == 'HFS')
-	dim_x, dim_y, dim_z = len(filelist), np.shape(ds.pixel_array)[1], np.shape(ds.pixel_array)[0]
+
+        dim_x = 0
+        for f in filelist:
+                if f.endswith(".dcm"): dim_x = dim_x + 1        
+
+	dim_y, dim_z = np.shape(ds.pixel_array)[1], np.shape(ds.pixel_array)[0]
 	volume, volume_tmp = np.zeros((dim_x,dim_y,dim_z)), np.zeros((dim_x,dim_y,dim_z))
 	print('')
 
@@ -164,8 +171,6 @@ def OpenDosi(filename=None):
 		ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian 
 		scaling_dosi = float(ds.DoseGridScaling)
 		dosi = scaling_dosi*ds.pixel_array
-		#dosi = (100./0.000280315)*scaling_dosi*ds.pixel_array
-		#dosi = ds.pixel_array
 		sp = ds.PixelSpacing
 		spacing_dosi = [ float(ds.GridFrameOffsetVector[1] - ds.GridFrameOffsetVector[0]), float(sp[1]),float(sp[0])]
 		origin_dosi = ds.ImagePositionPatient
@@ -173,7 +178,7 @@ def OpenDosi(filename=None):
 		if ("PatientPosition" in ds):	dosi_swap = (ds.PatientPosition == 'HFS')
 		if ("ImageOrientationPatient" in ds):	dosi_swap = (ds.ImageOrientationPatient == [1, 0, 0, 0, 1, 0])
 
-		if ds.SeriesDescription=='PatientLETScorer [MeV/mm/(g/cm3)]':	SetIntensityRange(dosi,0,15)
+		#if ds.SeriesDescription=='PatientLETScorer [MeV/mm/(g/cm3)]':	SetIntensityRange(dosi,0,15)
 
 	### .mhd file ###
 	if(file_path.endswith('.mhd')):	
@@ -184,8 +189,6 @@ def OpenDosi(filename=None):
 		text_file = open(file_path, "r")
 		tmp = text_file.readlines()
 		dosi_swap = (tmp[8][-4:-1] == 'RAI')
-		#dosi_swap = True
-		print tmp[8][-4:-1]
 
 	print('File successfully opened!')
 
@@ -193,18 +196,7 @@ def OpenDosi(filename=None):
 
 	if(len(np.shape(volume))==2):	dim_x_dosi, dim_y_dosi, dim_z_dosi = np.shape(dosi)[0], np.shape(dosi)[1], 1
 
-	#dosi = np.array(dosi, dtype = 'uint16')
-	#dosi = np.array(dosi, dtype = 'float16')
 	#print 'dosi type', dosi.dtype
-
-	#if (ID=='104005')and(file_path!=dir_ini+ID+'/pi/RD'+ID+'.dcm'):
-	if (file_path==dir_ini+'104005/SFUD/merged.dcm'):
-		print '**** 104005 ******'
-		dosi_swap=False
-		#dosi = np.flip(dosi,1) # flip volume
-		#dosi = np.flip(dosi,2) # flip volume
-		origin_dosi[1] = origin_dosi[1] -327 #+ (dim_y_dosi*spacing_dosi[1]-dim_y*spacing[2]) +20 # -344
-		origin_dosi[2] = origin_dosi[2] -187 #+ (dim_z_dosi*spacing_dosi[2]-dim_z*spacing[2]) +10 # -192 
 
 	if(dosi_swap == True):
 		dosi = np.flip(dosi,1) # flip volume
@@ -219,4 +211,4 @@ def OpenDosi(filename=None):
 	isodose_show = True
 	check1.select()
 	Update_all()
-
+	
