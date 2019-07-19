@@ -77,23 +77,6 @@ def Update():
 		if w2_moved or w4.get()>0:	ax2.imshow(im2, extent=ext8)
 		if w3_moved or w4.get()>0:	ax3.imshow(im3, extent=ext9)
 
-
-		'''### demo
-		if profile_show and ID=='102771':
-			#profile_ax.plot([xp1, xp2],[yp1, yp2], 'bo-')
-                        ax1.plot([-94, -3],[50, -14], 'bo-')
-                        ax2.plot([65, 65],[0, -26], 'bo-') 
-                        ax3.plot([-46, 12],[75, 75], 'bo-')
-                        ax3.plot([-100, 9],[-2, -27], 'bo-')
-
-		if profile_show and ID=='12420':
-			#profile_ax.plot([xp1, xp2],[yp1, yp2], 'bo-')
-                        ax1.plot([-29, 73],[23, -58], 'bo-')
-                        ax1.plot([-62, -34],[22, 50], 'bo-') 
-                        ax1.plot([-55, 1],[-56, -72], 'bo-')
-                        ax3.plot([39, 5],[38, 41], 'bo-')
-                        #ax3.plot([-8, 48],[42, 38], 'bo-')
-                '''
 		slice_ax4 = int((np.shape(im1)[1]-1)*(1 - 0.001*w4.get()))
 		slice_ax5 = int((np.shape(im2)[1]-1)*(1 - 0.001*w4.get()))
 		slice_ax6 = int((np.shape(im3)[1]-1)*(1 - 0.001*w4.get()))
@@ -185,24 +168,26 @@ def Update():
 		if (ROI_open==True)and(ROI_show==True):	
 			for ROI_index in range(N_ROI):	UpdateROI(ROI_infos[ROI_index,:], slice_ax1, slice_ax2, slice_ax3, ext8, ext9) 
 
-	"""
+	        t1.set_text("{0}".format( slice_ax1 ))
+            	t2.set_text("{0}".format( slice_ax2 ))
+            	t3.set_text("{0}".format( slice_ax3 ))
+
 	if(len(np.shape(volume))==2): ### 2D files #############
 
-		ax1.imshow(volume, extent=[origin[1],origin[1]-dim_y*spacing[1],origin[0]-dim_x*spacing[0],origin[0]])
-		ax1.axvline(x=(dim_y-1)*0.001*w4.get(), ls = '-', visible = w4.get())
+		im1 = volume[:,:]
+		ext7=[origin[1],origin[1]-dim_y*spacing[1],origin[0]-dim_x*spacing[0],origin[0]]
+		if rot1:	im1, ext7 = np.rot90(im1), [ext7[3],ext7[2],ext7[0],ext7[1]]
+		ax1.imshow(im1, extent=ext7)
 
-		if (isodose_show == False):	ax4.plot(volume[:,int((dim_y-1)*0.001*w4.get())],range(dim_x,0,-1), visible = w4.get())
+		if w4.get()>0:
+			ax1.axvline(x=ext7[1] + (ext7[0]-ext7[1])*0.001*w4.get(), ls = '-', visible = w4.get())
+		        slice_ax4 = int((np.shape(im1)[1]-1)*(1 - 0.001*w4.get()))
+			ax4.plot(im1[:,slice_ax4],np.linspace(ext7[3],ext7[2],np.shape(im1)[0]),visible=w4.get())
 
-		if (dosi_open == True) and (isodose_show == True):	
-			cs1=ax1.contour(dos, np.nanmax(dos)*levels, cmap = dosemap,linewidths=1)
-			for i in range(len(cs1.collections)):	cs1.collections[i].set_label('{0} %'.format(int(100*levels[i])))
-			ax1.legend(frameon=False)
-			ax4.plot(dos[:,int((dim_y-1)*0.001*w4.get())],range(dim_x,0,-1), visible = w4.get())
-	"""
-
-	t1.set_text("{0}".format( slice_ax1 ))
-    	t2.set_text("{0}".format( slice_ax2 ))
-    	t3.set_text("{0}".format( slice_ax3 ))
+		### profile tool
+		if profile_show:
+			profile_ax.plot([xp1, xp2],[yp1, yp2], 'bo-')
+			Update_profile()
 
 	Set_axes_lim()
 	#graph1.draw() # not needed if toolbar.draw()
