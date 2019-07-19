@@ -421,4 +421,3 @@ def CropDosi(ROI_index = 0):
 	Update_all()
 
 	print 'Dosimetry cropped'
-
