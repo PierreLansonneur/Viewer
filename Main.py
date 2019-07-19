@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 ############################################
 # Visualize dosimetry files with this viewer
+#       launch with : python Main.py
 # 		   ---
-#           P. Lansonneur 2018
+#           P. Lansonneur 2019
 ############################################
 
 import matplotlib.pyplot as P
@@ -113,9 +114,7 @@ execfile("./src/ROI.py")
 P.set_cmap('Greys')
 fig1 = P.figure(facecolor='lightgrey')
 fig1.set_size_inches(0.45*w_in, 0.8*h_in)
-#fig1.set_size_inches(0.3*w_in, 0.8*h_in)
 gs1 = gridspec.GridSpec( nrows=3, ncols=2, width_ratios=[7.5,1], bottom=0.01, top=0.99, left = 0.01, right=0.99, hspace=0, wspace=0)
-#gs1 = gridspec.GridSpec(nrows=3, ncols=2, width_ratios=[50,0.01], bottom=0.01, top=0.99, left = 0.01, right=0.99, hspace=0, wspace=0)
 ax1 = fig1.add_subplot(gs1[0,0])
 ax2 = fig1.add_subplot(gs1[1,0])
 ax3 = fig1.add_subplot(gs1[2,0])
@@ -150,7 +149,6 @@ w1 = Scale(window, from_=0, to=dim_x-1, orient=VERTICAL, command=w1move, showval
 w2 = Scale(window, from_=0, to=dim_y-1, orient=VERTICAL, command=w2move, showvalue = 0)
 w3 = Scale(window, from_=0, to=dim_z-1, orient=VERTICAL, command=w3move, showvalue = 0)
 w4 = Scale(window, from_=0, to=1000, orient=HORIZONTAL, command=w4move, showvalue = 0, length=0.405*w_px)
-#w4 = Scale(window, from_=0, to=1000, orient=HORIZONTAL, command=w4move, showvalue = 0, length=0.205*w_px)
 
 ### matplotlib events handler
 
@@ -164,7 +162,6 @@ fig1.canvas.get_tk_widget().focus_force() # detect event.key when 'button_press_
 ############ Items locations ############
 
 t4.grid(row=3,column=0, columnspan=2, sticky=E)
-#t5.grid(row=3,column=0, columnspan=2, sticky=W, padx = 5)
 t6.grid(row=4,column=1, sticky=E)
 canvas1.grid(row=0, column=0, rowspan=3, columnspan=2, sticky=W+E+N+S)
 toolbar_frame.grid(row=4,column=0, sticky=W+E+N+S)
@@ -187,8 +184,6 @@ filemenu.add_command(label="Open", command=OpenFile)
 filemenu.add_command(label="Open a DICOM serie", command=OpenDicomSerie)
 filemenu.add_command(label="Import dosimetry", command=OpenDosi)
 filemenu.add_command(label="Open RP file...", command=OpenRP)
-#filemenu.add_command(label="Demo", command=ID_demo)
-
 filemenu.add_separator()
 filemenu.add_command(label="Save as...", command=file_save)
 filemenu.add_command(label="Exit", command=window.quit)
@@ -196,34 +191,30 @@ filemenu.add_command(label="Exit", command=window.quit)
 ### Edit menu
 editmenu = Menu(menubar, tearoff=0)
 menubar.add_cascade(label="Edit", menu=editmenu)
-
 sub_editmenu = Menu(editmenu, tearoff=0)
 editmenu.add_cascade(label="Revert X axis", menu=sub_editmenu)
 sub_editmenu.add_command(label="ax1", command=Xrevert_ax1)
 sub_editmenu.add_command(label="ax2", command=Xrevert_ax2)
 sub_editmenu.add_command(label="ax3", command=Xrevert_ax3)
-
 sub_editmenu = Menu(editmenu, tearoff=0)
 editmenu.add_cascade(label="Revert Y axis", menu=sub_editmenu)
 sub_editmenu.add_command(label="ax1", command=Yrevert_ax1)
 sub_editmenu.add_command(label="ax2", command=Yrevert_ax2)
 sub_editmenu.add_command(label="ax3", command=Yrevert_ax3)
-
 sub_editmenu = Menu(editmenu, tearoff=0)
 editmenu.add_cascade(label="Rotate", menu=sub_editmenu)
 sub_editmenu.add_command(label="ax1", command=rot_ax1)
 sub_editmenu.add_command(label="ax2", command=rot_ax2)
 sub_editmenu.add_command(label="ax3", command=rot_ax3)
 
-sub_editmenu = Menu(editmenu, tearoff=0)
-editmenu.add_cascade(label="Scale", menu=sub_editmenu)
-sub_editmenu.add_command(label="Auto", command=AutoScale)
-sub_editmenu.add_command(label="Hounsfield", command=HounsfieldScale)
-sub_editmenu.add_command(label="User defined", command=UserScale)
-sub_editmenu.add_separator()
-sub_editmenu.add_command(label="Contrast +", command=High_Contrast)
-sub_editmenu.add_command(label="Contrast -", command=Low_Contrast)
-sub_editmenu.add_command(label="Invert scale", command=Inv_Scale)
+### Scale menu
+scalemenu = Menu(menubar, tearoff=0)
+menubar.add_cascade(label="Scale", menu=scalemenu)
+scalemenu.add_radiobutton(label='Auto',command=AutoScale)
+scalemenu.add_radiobutton(label='Hounsfield',command=HounsfieldScale)
+scalemenu.add_separator()
+scalemenu.add_command(label="Invert scale", command=Inv_Scale)
+scalemenu.invoke(0)
 
 ### Tool menu
 toolmenu = Menu(menubar, tearoff=0)
@@ -242,11 +233,8 @@ roimenu.add_command(label="Compute DVH...", command=ROI_DVH_analysis,state=DISAB
 roimenu.add_command(label="Crop dosimetry", command=CropDosi,state=DISABLED)
 roimenu.add_command(label="Normalize dosi to PTV dose", command=Rescale,state=DISABLED)
 
-### More menu
-helpmenu = Menu(menubar, tearoff=0)
-menubar.add_cascade(label="More", menu=helpmenu)
-helpmenu.add_command(label="File infos", command=FileInfo)
-helpmenu.add_command(label="About...", command=about)
+### Infos command
+menubar.add_command(label="Infos", command=FileInfo)
 
 ### Demo command
 menubar.add_command(label="Demo", command=Demo)
