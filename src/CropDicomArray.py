@@ -4,8 +4,12 @@
 import numpy as np
 import pydicom
 
-dir_ct = '/media/sf_Linux_Shared/102771/SFUD/'
+dir_ct = './'
 filename = 'merged'
+### Crop limits
+xmin, xmax = 129, 494
+ymin, ymax = 44, 476
+zmin, zmax = 257, 623
 
 ### Read file
 print('\nReading file '+dir_ct+filename+'.dcm')
@@ -14,18 +18,9 @@ vol = ds.pixel_array
 origin = ds.ImagePositionPatient
 spacing = ds.PixelSpacing
 
-### Crop limits 102771
-xmin, xmax = 129, 494
-ymin, ymax = 44, 476
-zmin, zmax = 257, 623
+### Crop the file
 vol = vol[zmin:zmax, ymin:ymax, xmin:xmax]
-"""
-### Crop limits 12420
-xmin, xmax = 140, 500
-ymin, ymax = 100, 540
-zmin, zmax = 275, 675
-vol = vol[zmin:zmax, ymin:ymax, xmin:xmax]
-"""
+
 ### Write cropped file
 ds.Rows = np.shape(vol)[1]
 ds.Columns = np.shape(vol)[2]
