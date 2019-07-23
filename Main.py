@@ -64,7 +64,7 @@ spacing = [1, 1, 1]					# CT spacing
 origin = [0, 0, 0]					# CT origin
 im1 = im2 = im3 = im = volume[0,:,:]			# CT scan projections
 ext7 = ext8 = ext9 = extent = [0,100,0,100]		# CT scan projections dimensions
-dir_ini = '/media/sf_Linux_Shared/'			# CT scans directory
+dir_ini = './'			# CT scans directory
 filename_CT = None
 
 ### dosimetry
