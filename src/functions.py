@@ -270,51 +270,51 @@ def FileInfo():
 	window_info = Toplevel(window)
 	window_info.title('File properties')
 
-	#try:
-	disp0 = Label(window_info, text=' CT : '+filename_CT.rsplit('/', 1)[-1])
-	disp1 = Label(window_info, text='  size :\t{0}\t{1}\t{2}\tpix\t'.format(dim_x, dim_y, dim_z))
-	disp2 = Label(window_info, text='  size :\t{0:.1f}\t{1:.1f}\t{2:.1f}\tmm\t'.format(dim_x*spacing[0], dim_y*spacing[1], dim_z*spacing[2]))
-	disp3 = Label(window_info, text='  spacing :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(spacing[0], spacing[1], spacing[2]))
-	disp4 = Label(window_info, text='  origin :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(origin[0], origin[1], origin[2]))
+	try:
+		disp0 = Label(window_info, text=' CT : '+filename_CT.rsplit('/', 1)[-1])
+		disp1 = Label(window_info, text='  size :\t{0}\t{1}\t{2}\tpix\t'.format(dim_x, dim_y, dim_z))
+		disp2 = Label(window_info, text='  size :\t{0:.1f}\t{1:.1f}\t{2:.1f}\tmm\t'.format(dim_x*spacing[0], dim_y*spacing[1], dim_z*spacing[2]))
+		disp3 = Label(window_info, text='  spacing :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(spacing[0], spacing[1], spacing[2]))
+		disp4 = Label(window_info, text='  origin :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(origin[0], origin[1], origin[2]))
 
-	disp0.grid(row=0, column=0, sticky=W)
-	disp1.grid(row=1, column=0, sticky=W)
-	disp2.grid(row=2, column=0, sticky=W)
-	disp3.grid(row=3, column=0, sticky=W)
-	disp4.grid(row=4, column=0, sticky=W)
+		disp0.grid(row=0, column=0, sticky=W)
+		disp1.grid(row=1, column=0, sticky=W)
+		disp2.grid(row=2, column=0, sticky=W)
+		disp3.grid(row=3, column=0, sticky=W)
+		disp4.grid(row=4, column=0, sticky=W)
 
-	if dosi_open:
-		disp0 = Label(window_info, text='\n Dose : '+filename_dosi.rsplit('/', 1)[-1])
-		disp1 = Label(window_info, text='  size :\t{0}\t{1}\t{2}\tpix\t'.format(dim_x_dosi, dim_y_dosi, dim_z_dosi))
-		disp2 = Label(window_info, text='  size :\t{0:.1f}\t{1:.1f}\t{2:.1f}\tmm\t'.format(dim_x_dosi*spacing_dosi[0], dim_y_dosi*spacing_dosi[1], dim_z_dosi*spacing_dosi[2]))
-		disp3 = Label(window_info, text='  spacing :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(spacing_dosi[0], spacing_dosi[1], spacing_dosi[2]))
-		disp4 = Label(window_info, text='  origin :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(origin_dosi[0], origin_dosi[1], origin_dosi[2]))
+		if dosi_open:
+			disp0 = Label(window_info, text='\n Dose : '+filename_dosi.rsplit('/', 1)[-1])
+			disp1 = Label(window_info, text='  size :\t{0}\t{1}\t{2}\tpix\t'.format(dim_x_dosi, dim_y_dosi, dim_z_dosi))
+			disp2 = Label(window_info, text='  size :\t{0:.1f}\t{1:.1f}\t{2:.1f}\tmm\t'.format(dim_x_dosi*spacing_dosi[0], dim_y_dosi*spacing_dosi[1], dim_z_dosi*spacing_dosi[2]))
+			disp3 = Label(window_info, text='  spacing :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(spacing_dosi[0], spacing_dosi[1], spacing_dosi[2]))
+			disp4 = Label(window_info, text='  origin :\t{0:.2f}\t{1:.2f}\t{2:.2f}\tmm\t'.format(origin_dosi[0], origin_dosi[1], origin_dosi[2]))
 
-		disp0.grid(row=5, column=0, sticky=W)
-		disp1.grid(row=6, column=0, sticky=W)
-		disp2.grid(row=7, column=0, sticky=W)
-		disp3.grid(row=8, column=0, sticky=W)
-		disp4.grid(row=9, column=0, sticky=W)
+			disp0.grid(row=5, column=0, sticky=W)
+			disp1.grid(row=6, column=0, sticky=W)
+			disp2.grid(row=7, column=0, sticky=W)
+			disp3.grid(row=8, column=0, sticky=W)
+			disp4.grid(row=9, column=0, sticky=W)
 
-	if ROI_open:
-		disp0 = Label(window_info, text='\n RT-struct : '+filename_ROI.rsplit('/', 1)[-1])
-		disp0.grid(row=10, column=0, sticky=W)
+		if ROI_open:
+			disp0 = Label(window_info, text='\n RT-struct : '+filename_ROI.rsplit('/', 1)[-1])
+			disp0.grid(row=10, column=0, sticky=W)
 
-		for ROI_index in range(N_ROI):
-			ROI_color = 255*ROI_infos[ROI_index,5].astype(float)
-			ROI_color = ROI_color.astype(int)
-			ROI_color = '#%02x%02x%02x' % (ROI_color[0], ROI_color[1], ROI_color[2])
-			if(ROI_index<10):	disp1 = Label(window_info, text='  {0}   '.format(ROI_index)+ROI_infos[ROI_index,0].decode('utf-8'))
-			else:	disp1 = Label(window_info, text='  {0} '.format(ROI_index)+ROI_infos[ROI_index,0].decode('utf-8'))
-			disp2 = Label(window_info, text='      ', bg=ROI_color)
-			if(ROI_index<=20):
-				disp1.grid(row=11+ROI_index, column=0, sticky=W)
-				disp2.grid(row=11+ROI_index, column=1, sticky=W)
-			else:
-				disp1.grid(row=-10+ROI_index, column=2, sticky=W)
-				disp2.grid(row=-10+ROI_index, column=3, sticky=W)
+			for ROI_index in range(N_ROI):
+				ROI_color = 255*ROI_infos[ROI_index,5].astype(float)
+				ROI_color = ROI_color.astype(int)
+				ROI_color = '#%02x%02x%02x' % (ROI_color[0], ROI_color[1], ROI_color[2])
+				if(ROI_index<10):	disp1 = Label(window_info, text='  {0}   '.format(ROI_index)+ROI_infos[ROI_index,0].decode('utf-8'))
+				else:	disp1 = Label(window_info, text='  {0} '.format(ROI_index)+ROI_infos[ROI_index,0].decode('utf-8'))
+				disp2 = Label(window_info, text='      ', bg=ROI_color)
+				if(ROI_index<=20):
+					disp1.grid(row=11+ROI_index, column=0, sticky=W)
+					disp2.grid(row=11+ROI_index, column=1, sticky=W)
+				else:
+					disp1.grid(row=-10+ROI_index, column=2, sticky=W)
+					disp2.grid(row=-10+ROI_index, column=3, sticky=W)
 
-	#except Exception:	pass
+	except Exception:	pass
 
 def Yrevert_ax1():
 	global revY1	
