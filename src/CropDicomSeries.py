@@ -4,11 +4,9 @@
 import numpy as np
 import pydicom
 
-dir_ct_in = '/media/sf_Linux_Shared/102771/CT/'
-dir_ct_out = '/media/sf_Linux_Shared/102771/CT_crop/'
-
-xmin, xmax, ymin, ymax = 120, 385, 40, 380 # 102771
-#xmin, xmax, ymin, ymax = 120, 415, 40, 443 # 12420
+dir_ct_in = './CT/'
+dir_ct_out = './CT_crop/'
+xmin, xmax, ymin, ymax = 120, 385, 40, 380 # X,Y limits in voxels
 zmin = -74.0 # in mm !
 
 #####################
