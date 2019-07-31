@@ -43,12 +43,13 @@ window.geometry("{0}x{1}+0+0".format(int(0.485*w_px), h_px))
 
 ############ Parameters initialization ############
 ### General
+dir_ini = '/media/sf_Linux_Shared/'			# files directory
 info=''							# file infos
 ID=''							# Patient ID
 low_contrast = high_contrast = inv_scale = False	# lower/raise contrast, invert greyscale
 revX1 = revX2 = revX3  = False				# reverse X axis
 revY1 = revY2 = revY3 = False				# reverse Y axis
-rot1 = rot2 = rot3 = True
+rot1 = rot2 = rot3 = True                               # rotate axis
 w1_moved = w2_moved = w3_moved = w4_moved = False	# did sliders move? 
 profile_show = False					# show profile
 profile_ax = None					# axis selected
@@ -64,7 +65,6 @@ spacing = [1, 1, 1]					# CT spacing
 origin = [0, 0, 0]					# CT origin
 im1 = im2 = im3 = im = volume[0,:,:]			# CT scan projections
 ext7 = ext8 = ext9 = extent = [0,100,0,100]		# CT scan projections dimensions
-dir_ini = './'			# CT scans directory
 filename_CT = None
 
 ### dosimetry
@@ -239,6 +239,6 @@ menubar.add_command(label="Infos", command=FileInfo)
 ### Demo command
 menubar.add_command(label="Demo", command=Demo)
 
-print ''
+print('')
 Update()
 window.mainloop()
