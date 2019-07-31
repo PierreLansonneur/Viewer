@@ -425,8 +425,13 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 	write the main.txt TOPAS file
 	"""
 	with open('./output/Main_{0}_{1}.txt'.format(ID,BeamName), 'w') as f:
-		f.write('### TOPAS MC main file for patient ID #{0}\n'.format(ID))
-		f.write('### Beam name: {0}\n\n'.format(BeamName))
+
+		f.write('######################################\n')
+		f.write('# TOPAS MC v3.2 simulation file\n')
+		f.write('# Patient IPP: {0}\n'.format(ID))
+		f.write('# Beam name: {0}\n'.format(BeamName))
+		f.write('# https://github.com/PierreLansonneur\n')
+		f.write('######################################\n\n')
 
 		f.write('### GENERAL COMMANDS\n')
 		f.write('b:Ge/CheckForOverlaps 		= "1"\n')
@@ -469,7 +474,6 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('d:Ge/SuperGroup/RotZ 		= 0 deg\n\n')
 
 		f.write('### PATIENT\n')
-
 		f.write('s:Ge/Patient/ImagingToMaterialConverter 	= "Schneider"\n')
 		f.write('includeFile 					= HUtoMAT.txt # WARNING check the scanner model!\n\n') 
 
@@ -500,7 +504,7 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('### Patient modelisation\n')
 		f.write('s:Ge/Patient/CT/Parent 				= "Patient"\n')
 		f.write('s:Ge/Patient/CT/Type 				= "TsDicomPatient"\n')
-		f.write('b:Ge/Patient/CT/IsParallel 			= "{0}"\n'.format(keepCTDim))
+		#f.write('b:Ge/Patient/CT/IsParallel 			= "{0}"\n'.format(keepCTDim))
 		f.write('s:Ge/Patient/CT/Material 			= "G4_WATER"\n')
 		f.write('s:Ge/Patient/CT/DicomDirectory 			= "./CT_{0}"\n'.format(ID))	###
 		f.write('sv:Ge/Patient/CT/DicomModalityTags 		= 1 "CT"\n')
@@ -514,6 +518,14 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		#f.write('#sv:Ge/Patient/CT/ColorByRTStructColors 		= 2 "green" "red"\n')
 		#f.write('#b:Ge/Patient/CT/IgnoreInconsistentFrameOfReferenceUID = "True"\n\n')
 
+	        f.write('### Crop CT dimensions\n')
+	        f.write('i:Ge/Patient/CT/RestrictVoxelsXMin = {0}\n'.format(wz_min.get()))
+	        f.write('i:Ge/Patient/CT/RestrictVoxelsXMax = {0}\n'.format(wz_max.get()))
+	        f.write('i:Ge/Patient/CT/RestrictVoxelsYMin = {0}\n'.format(wy_min.get()))
+	        f.write('i:Ge/Patient/CT/RestrictVoxelsYMax = {0}\n'.format(wy_max.get()))
+	        f.write('i:Ge/Patient/CT/RestrictVoxelsZMin = {0}\n'.format(wx_min.get()))
+	        f.write('i:Ge/Patient/CT/RestrictVoxelsZMax = {0}\n\n'.format(wx_max.get()))
+
 		f.write('### Dose computation\n')
 		f.write('s:Sc/PatientScorer/Component 			= "Patient/CT"\n')
 		f.write('s:Sc/PatientScorer/Quantity 			= "DoseToWater"\n')
@@ -524,7 +536,6 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('i:Sc/PatientScorer/XBins 			= {0:.0f}\n'.format(np.round((1.0/grid_size)*(1+wz_max.get()-wz_min.get())*spacing[2])))
 		f.write('i:Sc/PatientScorer/YBins 			= {0:.0f}\n'.format(np.round((1.0/grid_size)*(1+wy_max.get()-wy_min.get())*spacing[1])))
 		f.write('i:Sc/PatientScorer/ZBins 			= {0:.0f}\n\n'.format(np.round((1.0/grid_size)*(1+wx_max.get()-wx_min.get())*spacing[0])))
-
 		#f.write('#sv:Sc/PatientScorer/OnlyIncludeIfInRTStructure 	= 1 "CONTOUR_EXTERNE"\n')
 		#f.write('#b:Sc/PatientScorer/OutputAfterRun 		= True\n\n')
 
@@ -539,16 +550,14 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('d:Ge/SM1/Dipole/MaxStepSize 	= 1 mm\n')
 		f.write('d:Ge/SM2/Dipole/MaxStepSize 	= 1 mm\n\n')
 
-                if(keepCTDim == True):
-                        LMGW = ["Patient/CT"]
-                        if (0.1*float(SnoutID)==10):	LMGW = np.append(LMGW,["Snout/BrassCone2","Snout/BrassTube2","Snout/BrassCone3"])
-                        if (0.1*float(SnoutID)==18):	LMGW = np.append(LMGW,["Snout/BrassCone2","Snout/BrassCone3"])
-                        if (0.1*float(SnoutID)==25):	LMGW = np.append(LMGW,["Snout/AlBrassTube2", "Snout/BrassCone2", "Snout/BrassCone3", "Snout/BrassCone4"])
-                        if (0.1*float(SnoutID)==40):	LMGW = np.append(LMGW,["Snout/SquarePart2", "Snout/SquarePart3"])
-                        if (epRS==65 or epRS==30):      LMGW = np.append(LMGW,["RS"])
-                        f.write('sv:Ph/Default/LayeredMassGeometryWorlds = {0} '.format(len(LMGW)))
-		        for item in LMGW:	f.write('"{0}" '.format(item))
-		        f.write('\n\n')
+                if (0.1*float(SnoutID)==10):	LMGW = ["Snout/BrassCone2","Snout/BrassTube2","Snout/BrassCone3"]
+                if (0.1*float(SnoutID)==18):	LMGW = ["Snout/BrassCone2","Snout/BrassCone3"]
+                if (0.1*float(SnoutID)==25):	LMGW = ["Snout/AlBrassTube2", "Snout/BrassCone2", "Snout/BrassCone3", "Snout/BrassCone4"]
+                if (0.1*float(SnoutID)==40):	LMGW = ["Snout/SquarePart2", "Snout/SquarePart3"]
+                if (epRS==65 or epRS==30):      LMGW = np.append(LMGW,["RS"])
+                f.write('sv:Ph/Default/LayeredMassGeometryWorlds = {0} '.format(len(LMGW)))
+	        for item in LMGW:	f.write('"{0}" '.format(item))
+	        f.write('\n\n')
                 '''
 		f.write('### SPEED-UP the simulation\n')
 		f.write('#b:Vr/UseVarianceReduction 				= "True"\n')
@@ -556,14 +565,6 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('#sv:Vr/KillOtherParticles/HaveNoEffectInComponentsNamed= 1 "Patient/CT"\n')
 		f.write('#sv:Vr/KillOtherParticles/OnlyTrackParticlesNamed 	= 1 "proton"\n\n')
                 '''
-                if(keepCTDim == False):
-		        f.write('### Crop matrix\n')
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsXMin = {0}\n'.format(wz_min.get()))
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsXMax = {0}\n'.format(wz_max.get()))
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsYMin = {0}\n'.format(wy_min.get()))
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsYMax = {0}\n'.format(wy_max.get()))
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsZMin = {0}\n'.format(wx_min.get()))
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsZMax = {0}\n\n'.format(wx_max.get()))
 
 		f.write('### Time Features Parameters\n')
 		f.write('i:Tf/NumberOfSequentialTimes 	= {0}\n'.format(N)) 
