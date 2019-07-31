@@ -18,7 +18,6 @@ A visualization tool distributed for Linux that can be used to:
 - pyDICOM `pip install pydicom`
 - SimpleITK `pip install SimpleITK`
 - vtk `pip install vtk`
-- pyFPDF `pip install fpdf`
 
 ### Image navigation
 The file menu allows you to open Dicom files (.dcm), dicom series or a metaimages (.mhd). Once opened, three different views (axial, sagittal and coronal plane) are displayed on the axes. You can navigate through the different slices using either the mouse scroll or the three sliders on the viewer side.
