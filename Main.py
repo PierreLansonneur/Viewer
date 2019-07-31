@@ -29,7 +29,6 @@ warnings.filterwarnings("ignore", message="converting a masked element to nan")
 from matplotlib.path import Path
 import matplotlib.patches as patches
 from scipy.ndimage import rotate, zoom, map_coordinates
-from fpdf import FPDF
 from scipy.signal import find_peaks
 
 window = Tk()
