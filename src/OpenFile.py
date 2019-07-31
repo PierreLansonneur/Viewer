@@ -9,7 +9,7 @@ def OpenFile(filename=None):
 	"""
 	Open a .dcm or a .mhd file
 	"""
-	global volume, spacing, dim_x, dim_y, dim_z, origin, CT_open, filename_CT
+	global volume, spacing, dim_x, dim_y, dim_z, origin, CT_open, filename_CT, dir_ini
 	ct_swap = False
 
 	if(filename==None):
@@ -18,7 +18,7 @@ def OpenFile(filename=None):
 	else:	file_path = filename
 
 	filename_CT = file_path
-
+        dir_ini = str(file_path.rsplit('/', 1)[0])+'/'
 	print 'Opening file...'
 
 	### .dcm file ###
@@ -26,8 +26,13 @@ def OpenFile(filename=None):
 		ds = pydicom.read_file(file_path)
 		ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian 
 		volume = ds.pixel_array
-		spacing[0:1] = ds.PixelSpacing
-	        origin[0:1] = ds.ImagePositionPatient
+
+                try:
+		        spacing[0:1] = ds.PixelSpacing
+	                origin[0:1] = ds.ImagePositionPatient
+                except Exception:
+		        spacing = ds.PixelSpacing
+	                origin = ds.ImagePositionPatient
 
                 if (ds.Modality == 'RTDOSE'):
 		        if ("DoseGridScaling" in ds):	volume = float(ds.DoseGridScaling)*volume
@@ -81,7 +86,7 @@ def OpenDicomSerie(dirname=None):
 	"""
 	Open a dicom serie
 	"""
-	global volume, dim_x, dim_y, dim_z, spacing, origin, CT_open, filename_CT
+	global volume, dim_x, dim_y, dim_z, spacing, origin, CT_open, filename_CT, dir_ini
 	ct_swap = False
 
 	# Opening file
@@ -93,6 +98,7 @@ def OpenDicomSerie(dirname=None):
 		file_path = dirname + filelist[0]
 
 	filename_CT = file_path
+        dir_ini = str(file_path.rsplit('/', 1)[0])+'/'
 
 	# Getting dimensions
 	ds = pydicom.read_file(file_path)
@@ -119,7 +125,7 @@ def OpenDicomSerie(dirname=None):
 			if('SliceLocation' in ds):	order[i] = [i,ds.SliceLocation]
 			else:	order[i] = [i,ds.ImagePositionPatient[2]]
 			i=i+1
-			print 'Creating CT volume ... '+'█'*int(30*i/dim_x) + '|'*int(30*(dim_x-i)/dim_x)+'\r', # progress bar
+			print 'Creating CT volume ... '+'â–ˆ'*int(30*i/dim_x) + '|'*int(30*(dim_x-i)/dim_x)+'\r', # progress bar
 	order = sorted(order, key = itemgetter(1))
 	print('')
 	spacing = [float(order[1][1] - order[0][1]),float(sp[1]), float(sp[0])]
@@ -130,7 +136,7 @@ def OpenDicomSerie(dirname=None):
 	for j in range(dim_x-1):
 		k = order[j][0]
 		volume[j,:,:] = volume_tmp[k,:,:]
-		print 'Sorting CT slices  ... '+'█'*int(30*j/(dim_x-2)) + '|'*int(30*(dim_x-j)/(dim_x-2))+'\r', # progress bar
+		print 'Sorting CT slices  ... '+'â–ˆ'*int(30*j/(dim_x-2)) + '|'*int(30*(dim_x-j)/(dim_x-2))+'\r', # progress bar
 	print('\nFile successfully opened!')
 
 	if ("RescaleSlope" in ds):	volume = float(ds.RescaleSlope)*volume
@@ -211,4 +217,3 @@ def OpenDosi(filename=None):
 	isodose_show = True
 	check1.select()
 	Update_all()
-	
