@@ -56,6 +56,8 @@ def VTK_isosurface(array, spacing, value, zoom_factor=1, norm=True, save = False
 	# norm    : Type True to normalize the data between 0 and 1.
 	#############################################################
 
+        array = array.copy(order='C')
+
 	#print array.shape[2], array.shape[1], array.shape[0]
 	'''
 	if(array.shape[2]*array.shape[1]*array.shape[0]>1E7): # Big images.. --> reduce dimensions
