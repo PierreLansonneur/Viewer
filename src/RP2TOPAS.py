@@ -6,7 +6,7 @@
 
 def UpdateRPBoundingBox(ext7,ext8,ext9, rot1, rot2, rot3, ax_):
         """
-        Update dosi bounding box for TOPAS calculation (red recatngle)
+        Update dosi bounding box for TOPAS calculation (red rectangle)
         """
         if(ax_==ax1):
 	        width_x, width_y = (wy_max.get()-wy_min.get())*spacing[1], (wz_max.get()-wz_min.get()-1)*spacing[2]
@@ -231,9 +231,11 @@ def ReadRP(createTopasfile = False, check = True):
 		for i in range(len(fgs)):
 			rbs = fgs[i].ReferencedBeamSequence
 			for j in range(len(rbs)):
-				if(ibs[k].TreatmentDeliveryType=='SETUP'):      continue	
-				BeamDose[rbs[j].ReferencedBeamNumber-1] = rbs[j].BeamDose		# Dose per fraction
-				BeamMeterset[rbs[j].ReferencedBeamNumber-1] = rbs[j].BeamMeterset	# UM per fraction
+				if(ibs[k].TreatmentDeliveryType=='SETUP'):      continue
+                                try:	
+				        BeamDose[rbs[j].ReferencedBeamNumber-1] = rbs[j].BeamDose		# Dose per fraction
+				        BeamMeterset[rbs[j].ReferencedBeamNumber-1] = rbs[j].BeamMeterset	# UM per fraction
+                                except Exception:       pass
 
 		### Reads tags for each beams (orientation, isocenter, snout, etc...)
 		for k in range(len(ibs)):
@@ -389,7 +391,7 @@ def ReadRP(createTopasfile = False, check = True):
 			        check_PBS(BeamName,E,x,y,UM)
 
                         if(createTopasfile == True):
-        			grid_size = 0.5 # scorer binning in mm
+        			grid_size = 1. # scorer binning in mm
         			CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle, E ,x ,y , UM, N, PatientSupportAngle, TransX, TransY, TransZ, dim_x, dim_y, dim_z, spacing, grid_size)
 
 	RP_crop_show=True
@@ -469,7 +471,7 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('### PATIENT\n')
 
 		f.write('s:Ge/Patient/ImagingToMaterialConverter 	= "Schneider"\n')
-		f.write('includeFile 					= HUtoMAT.txt\n\n') # check the scanner model
+		f.write('includeFile 					= HUtoMAT.txt # WARNING check the scanner model!\n\n') 
 
 		f.write('### Patient group\n')
 		f.write('s:Ge/Patient/Message 				= "Constructing Patient"\n')
@@ -498,7 +500,7 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('### Patient modelisation\n')
 		f.write('s:Ge/Patient/CT/Parent 				= "Patient"\n')
 		f.write('s:Ge/Patient/CT/Type 				= "TsDicomPatient"\n')
-		f.write('b:Ge/Patient/CT/IsParallel 			= "True"\n')
+		f.write('b:Ge/Patient/CT/IsParallel 			= "{0}"\n'.format(keepCTDim))
 		f.write('s:Ge/Patient/CT/Material 			= "G4_WATER"\n')
 		f.write('s:Ge/Patient/CT/DicomDirectory 			= "./CT_{0}"\n'.format(ID))	###
 		f.write('sv:Ge/Patient/CT/DicomModalityTags 		= 1 "CT"\n')
@@ -519,16 +521,16 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('s:Sc/PatientScorer/OutputType 			= "DICOM"\n')
 		f.write('b:Sc/PatientScorer/OutputToConsole 		= "0"\n')
 		f.write('s:Sc/PatientScorer/IfOutputFileAlreadyExists 	= "Increment"\n')
-		f.write('i:Sc/PatientScorer/XBins 			= {0:.0f}\n'.format(np.round((1.0/grid_size)*dim_z*spacing[2])))
-		f.write('i:Sc/PatientScorer/YBins 			= {0:.0f}\n'.format(np.round((1.0/grid_size)*dim_y*spacing[1])))
-		f.write('i:Sc/PatientScorer/ZBins 			= {0:.0f}\n\n'.format(np.round((1.0/grid_size)*dim_x*spacing[0])))
+		f.write('i:Sc/PatientScorer/XBins 			= {0:.0f}\n'.format(np.round((1.0/grid_size)*(1+wz_max.get()-wz_min.get())*spacing[2])))
+		f.write('i:Sc/PatientScorer/YBins 			= {0:.0f}\n'.format(np.round((1.0/grid_size)*(1+wy_max.get()-wy_min.get())*spacing[1])))
+		f.write('i:Sc/PatientScorer/ZBins 			= {0:.0f}\n\n'.format(np.round((1.0/grid_size)*(1+wx_max.get()-wx_min.get())*spacing[0])))
+
 		#f.write('#sv:Sc/PatientScorer/OnlyIncludeIfInRTStructure 	= 1 "CONTOUR_EXTERNE"\n')
 		#f.write('#b:Sc/PatientScorer/OutputAfterRun 		= True\n\n')
 
 		f.write('### PHYSICS (TOPAS default settings)\n')
 		f.write('s:Ph/ListName 			= "Default"\n')
 		f.write('s:Ph/Default/Type 		= "Geant4_Modular"\n')
-		#f.write('sv:Ph/Default/Modules 		= 6 "g4em-standard_opt4" "g4h-phy_QGSP_BIC" "g4decay" "g4ion-binarycascade" "g4h-elastic_HP" "g4stopping"\n')
 		f.write('sv:Ph/Default/Modules 		= 7 "g4em-standard_opt3" "g4h-phy_QGSP_BIC_HP" "g4decay" "g4ion-binarycascade" "g4h-elastic_HP" "g4stopping" "g4radioactivedecay"\n')
 		f.write('d:Ph/Default/EMRangeMin 	= 100 eV\n')
 		f.write('d:Ph/Default/EMRangeMax 	= 230 MeV\n')
@@ -537,27 +539,31 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('d:Ge/SM1/Dipole/MaxStepSize 	= 1 mm\n')
 		f.write('d:Ge/SM2/Dipole/MaxStepSize 	= 1 mm\n\n')
 
-		if (0.1*float(SnoutID)==10):	f.write('sv:Ph/Default/LayeredMassGeometryWorlds = 6 "CT_visu" "Patient/CT" "Snout/BrassCone2" "Snout/BrassTube2" "Snout/BrassCone3" "RS"\n\n') # snout 10
-		if (0.1*float(SnoutID)==18):	
-			f.write('sv:Ph/Default/LayeredMassGeometryWorlds = 5 "CT_visu" "Patient/CT" "Snout/BrassCone2" "Snout/BrassCone3" "RS"\n') # snout 18
-			f.write('#sv:Ph/Default/LayeredMassGeometryWorlds = 6 "CT_visu" "Patient/CT" "Snout/BrassCone2" "Snout/BrassCone3" "RS" "Aperture"\n\n') # snout 18
-		if (0.1*float(SnoutID)==25):	f.write('sv:Ph/Default/LayeredMassGeometryWorlds = 7 "CT_visu" "Patient/CT" "Snout/AlBrassTube2" "Snout/BrassCone2" "Snout/BrassCone3" "Snout/BrassCone4" "RS"\n\n') # snout 25
-		if (0.1*float(SnoutID)==40):	f.write('sv:Ph/Default/LayeredMassGeometryWorlds = 5 "CT_visu" "Patient/CT" "Snout/SquarePart2"  "Snout/SquarePart3" "RS"\n\n') # snout 40
-
+                if(keepCTDim == True):
+                        LMGW = ["Patient/CT"]
+                        if (0.1*float(SnoutID)==10):	LMGW = np.append(LMGW,["Snout/BrassCone2","Snout/BrassTube2","Snout/BrassCone3"])
+                        if (0.1*float(SnoutID)==18):	LMGW = np.append(LMGW,["Snout/BrassCone2","Snout/BrassCone3"])
+                        if (0.1*float(SnoutID)==25):	LMGW = np.append(LMGW,["Snout/AlBrassTube2", "Snout/BrassCone2", "Snout/BrassCone3", "Snout/BrassCone4"])
+                        if (0.1*float(SnoutID)==40):	LMGW = np.append(LMGW,["Snout/SquarePart2", "Snout/SquarePart3"])
+                        if (epRS==65 or epRS==30):      LMGW = np.append(LMGW,["RS"])
+                        f.write('sv:Ph/Default/LayeredMassGeometryWorlds = {0} '.format(len(LMGW)))
+		        for item in LMGW:	f.write('"{0}" '.format(item))
+		        f.write('\n\n')
+                '''
 		f.write('### SPEED-UP the simulation\n')
 		f.write('#b:Vr/UseVarianceReduction 				= "True"\n')
-		f.write('#b:Vr/KillOtherParticles/Active 				= "True"\n')
-		f.write('#sv:Vr/KillOtherParticles/HaveNoEffectInComponentsNamed 	= 1 "Patient/CT"\n')
+		f.write('#b:Vr/KillOtherParticles/Active 			= "True"\n')
+		f.write('#sv:Vr/KillOtherParticles/HaveNoEffectInComponentsNamed= 1 "Patient/CT"\n')
 		f.write('#sv:Vr/KillOtherParticles/OnlyTrackParticlesNamed 	= 1 "proton"\n\n')
-
+                '''
                 if(keepCTDim == False):
 		        f.write('### Crop matrix\n')
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsXMin = {0}\n'.format(wx_min.get()))
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsXMax = {0}\n'.format(wx_max.get()))
+		        f.write('i:Ge/Patient/CT/RestrictVoxelsXMin = {0}\n'.format(wz_min.get()))
+		        f.write('i:Ge/Patient/CT/RestrictVoxelsXMax = {0}\n'.format(wz_max.get()))
 		        f.write('i:Ge/Patient/CT/RestrictVoxelsYMin = {0}\n'.format(wy_min.get()))
 		        f.write('i:Ge/Patient/CT/RestrictVoxelsYMax = {0}\n'.format(wy_max.get()))
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsZMin = {0}\n'.format(wz_min.get()))
-		        f.write('i:Ge/Patient/CT/RestrictVoxelsZMax = {0}\n\n'.format(wz_max.get()))
+		        f.write('i:Ge/Patient/CT/RestrictVoxelsZMin = {0}\n'.format(wx_min.get()))
+		        f.write('i:Ge/Patient/CT/RestrictVoxelsZMax = {0}\n\n'.format(wx_max.get()))
 
 		f.write('### Time Features Parameters\n')
 		f.write('i:Tf/NumberOfSequentialTimes 	= {0}\n'.format(N)) 
@@ -663,8 +669,8 @@ def CreateTopasFilePBS(ID, BeamName, SnoutID, epRS, DCI, retraction, GantryAngle
 		f.write('b:Gr/Enable 			= "0"\n')
 		f.write('s:Gr/ViewA/Type 		= "VRML"\n')
 		f.write('b:Ge/World/Invisible 		= "1"\n')
-		f.write('#b:Ge/Patient/CT/Invisible 	= "1"\n')
-		f.write('#b:Gr/ViewA/IncludeAxes 	= "1"\n')
+		#f.write('#b:Ge/Patient/CT/Invisible 	= "1"\n')
+		#f.write('#b:Gr/ViewA/IncludeAxes 	= "0"\n')
 
 	print 'file {0} saved succesfully!'.format('./output/Main_{0}_{1}.txt'.format(ID,BeamName))
 
@@ -780,6 +786,6 @@ def check_DS(BeamName, BlockData, CompensatorThicknessData, ext):
 	ax7.add_patch(patch)
 
 	P.colorbar(comp, ax=ax7, format='%d mm')
-
+	P.tight_layout()
 	#P.savefig(BeamName+'.pdf',  bbox_inches='tight', dpi=300)
 	graph2.draw()
