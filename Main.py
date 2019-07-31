@@ -42,7 +42,7 @@ window.geometry("{0}x{1}+0+0".format(int(0.485*w_px), h_px))
 
 ############ Parameters initialization ############
 ### General
-dir_ini = '/media/sf_Linux_Shared/'			# files directory
+dir_ini = './'			# files directory
 info=''							# file infos
 ID=''							# Patient ID
 low_contrast = high_contrast = inv_scale = False	# lower/raise contrast, invert greyscale
@@ -236,7 +236,7 @@ roimenu.add_command(label="Normalize dosi to PTV dose", command=Rescale,state=DI
 menubar.add_command(label="Infos", command=FileInfo)
 
 ### Demo command
-menubar.add_command(label="Demo", command=Demo)
+#menubar.add_command(label="Demo", command=Demo)
 
 print('')
 Update()
