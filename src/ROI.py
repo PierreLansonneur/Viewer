@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ###################################################
 #   	      Import RT-STRUCT files
 # 		   	----
@@ -11,7 +12,7 @@ def open_ROI(filename=None):
 	global ROI_open, ROI_show, ds_ROI, ROI_infos, N_ROI, filename_ROI
 
 	if (CT_open == False): 
-                tkMessageBox.showerror('Error', 'You must open a CT first') #print 'You must open a CT first..'
+                tkMessageBox.showerror('Error', 'You must open a CT first')
                 return
 
 	else:
@@ -74,9 +75,9 @@ def Get_ROI_infos(ds, i):
 	ROI_infos[i,0] = ds_ROI.StructureSetROISequence[i].ROIName	# ROI Name
 	ROI_infos[i,1] = x						# vertices x coordinates in mm
 	ROI_infos[i,2] = y						# vertices y coordinates in mm
-	ROI_infos[i,3] = z - origin[0]			# vertices z coordinates in mm
-	ROI_infos[i,4] = N_vert_cumul			# cumulated number of vertices for each contour
-	ROI_infos[i,5] = color					# color in RGB format
+	ROI_infos[i,3] = z - origin[0]			                # vertices z coordinates in mm
+	ROI_infos[i,4] = N_vert_cumul			                # cumulated number of vertices for each contour
+	ROI_infos[i,5] = color					        # color in RGB format
 	ROI_infos[i,6] = 0						# 0-1 array with same dimension as the CT volume.
 
 def UpdateROI(array, slice_ax1, slice_ax2, slice_ax3,ext8,ext9):
@@ -127,54 +128,33 @@ def UpdateROI(array, slice_ax1, slice_ax2, slice_ax3,ext8,ext9):
 		ax3.contour(roi3, 0, colors=[ROI_color], linewidths=1, extent=ext9)
 
 def ROI_DVH_analysis():
-	global ax8, graph3, fig3
 	"""
 	display the cumulative DVH of every ROI loaded
 	"""
+	global ax8, graph3, fig3, DVHData
+
 	window_ROI_DVH = Toplevel(window)
 	window_ROI_DVH.geometry("{0}x{1}+{2}+{3}".format(900, 590, w_px, 0))
 	window_ROI_DVH.title('DVH')
 
 	fig3 = P.figure(facecolor='lightgrey')
-	#fig3.set_size_inches(8,6)
 	fig3.set_size_inches(9,5.5)
 	graph3 = FigureCanvasTkAgg(fig3, master=window_ROI_DVH)
 	canvas3 = graph3.get_tk_widget()
 	toolbar_frame3 = Frame(window_ROI_DVH)
 	toolbar3 = NavigationToolbar2TkAgg(graph3, toolbar_frame3)
 	ax8 = fig3.gca()
-
         P.subplots_adjust(left=0.08,right=0.8, bottom=0.09, top=0.96)
+	roi_bt = Button(window_ROI_DVH, text="Export..", command=ExportDVH)
 
 	canvas3.grid(row=3, column=0, columnspan=5, sticky=W+E+N+S)
 	toolbar_frame3.grid(row=4,column=0, columnspan=4, sticky=W+E+N+S)
+	roi_bt.grid(row=4,column=4,sticky=E+N+S)
 
-        print '\nName             \tmean dose (Gy)\tPVDR (error)\ts-index\tc-index\th-index'
+        DVHData= np.empty(N_ROI, dtype=np.object)
 
-        pdf = FPDF('P', 'mm', (110, 135))
-        pdf.set_margins(3,3)
-        pdf.set_auto_page_break(False,3)
-        pdf.add_page()
-        pdf.set_font('Arial', '', 10)
-
-        pdf2 = FPDF('P', 'mm', (120, 30))
-        pdf2.set_margins(3,3)
-        pdf2.set_auto_page_break(False,3)
-        pdf2.add_page()
-        pdf2.set_font('Arial', '', 10)
-
-        border, cell_h = 1, 10
-        pdf.cell(40, cell_h, 'Name', border, 0, 'L') # pdf.cell(w, h, 'text', border = 0, ln = 0)
-        pdf.cell(20, cell_h, '<dose> (Gy)', border, 0, 'C')
-        pdf.cell(20, cell_h, '<PVDR>', border, 0, 'C')
-        pdf.cell(20, cell_h, 'error', border, 1, 'C')
-
-        pdf2.cell(25, cell_h, 'Name', border, 0, 'L')
-        pdf2.cell(30, cell_h, 'Vol   (cm3)', border, 0, 'C')
-        pdf2.cell(30, cell_h, 'V_95% (cm3)', border, 0, 'C')
-        pdf2.cell(20, cell_h, 's-index', border, 0, 'C')
-        pdf2.cell(20, cell_h, 'c-index', border, 0, 'C')
-        pdf2.cell(20, cell_h, 'h-index', border, 1, 'C')
+        print '\nCalculating DVH..'
+        print 'Structure        \tmean dose (Gy)\tPVDR (error)\ts-index\tc-index\th-index'
 
 	for ROI_index in range(1,N_ROI):
 
@@ -189,29 +169,14 @@ def ROI_DVH_analysis():
 
 			ROI_color = ROI_infos[ROI_index,5]
 
-			#print ROIName,'\t {0:.2f}\t Gy'.format(np.mean(DVH))
-			#ROILabel = ROIName + ': {0:.2f} Gy'.format(np.mean(DVH))
-			#ROILabel = '{0}: {1:.1f} Gy'.format(ROIName.ljust(17),np.mean(DVH))
-                        #tmp = '({0:.2f} Gy)'.format(np.mean(DVH))
-			#ROILabel = '{0} {1}'.format(tmp.ljust(11), ROIName)
-			#print ROILabel
-
-			#DVH = DVH/DVH.max() # normalize max dose to 1
-
 			# cumulative DVH
-			ax8.hist(DVH, bins='auto', range=(0,DVH.max()), histtype='step', cumulative=-1, density=True, label=ROIName, color=ROI_color) 
+			DVHData[ROI_index] = ax8.hist(DVH, bins='auto', range=(0,DVH.max()), histtype='step', cumulative=-1, density=True, label=ROIName, color=ROI_color) 
 
 			# differential DVH
-			#ax8.hist(DVH, bins='auto', range=(0,DVH.max()), histtype='step', density=True, label=ROIName, color=ROI_color)
-
-                        border, cell_h = 0, 5
+			#DVHData[ROI_index] = ax8.hist(DVH, bins='auto', range=(0,DVH.max()), histtype='step', density=True, label=ROIName, color=ROI_color)
 
 			ROI_color = 255*ROI_infos[ROI_index,5].astype(float)
 			ROI_color = ROI_color.astype(int)
-                        pdf.set_text_color(ROI_color[0],ROI_color[1],ROI_color[2])
-                        pdf.cell(40, cell_h, ROIName, border, 0,'L')
-
-                        pdf.set_text_color(0,0,0)
                         s_index = c_index = h_index = np.nan
 
                         volume_ROI = ROI_3D(ROI_infos, ROI_index, tag='CROP')
@@ -226,34 +191,61 @@ def ROI_DVH_analysis():
                                 c_index = c_index_tmp/(0.001*np.sum(ROI_infos[ROI_index,6])*spacing[0]*spacing[1]*spacing[2])
                                 h_index = (np.percentile(DVH,98)-np.percentile(DVH,2))/np.percentile(DVH,50)
 
-                                pdf2.set_text_color(ROI_color[0],ROI_color[1],ROI_color[2])
-                                pdf2.cell(25, cell_h, ROIName, border, 0,'L')
-                                pdf2.set_text_color(0,0,0)
-                                pdf2.cell(30, cell_h, '{0:.2f}'.format(0.001*np.sum(ROI_infos[ROI_index,6])*spacing[0]*spacing[1]*spacing[2]), border, 0, 'C')
-                                pdf2.cell(30, cell_h, '{0:.2f}'.format(c_index_tmp), border, 0, 'C')
-                                pdf2.cell(20, cell_h, '{0:.3f}'.format(s_index), border, 0, 'C')
-                                pdf2.cell(20, cell_h, '{0:.2f}'.format(c_index), border, 0, 'C')
-                                pdf2.cell(20, cell_h, '{0:.2f}'.format(h_index), border, 1, 'C')
-  
-                        pdf.cell(20, cell_h, '{0:.2f}'.format(np.mean(DVH)), border, 0, 'C')
-                        pdf.cell(20, cell_h, '{0:.2f}'.format(PVDR_[0]), border, 0, 'C')
-                        pdf.cell(20, cell_h, '{0:.2f}'.format(PVDR_[1]), border, 1, 'C')
-
                         print '{0}\t{1:.1f}\t\t{2:.2f} ({3:.2f})\t{4:.2f}\t{5:.2f}\t{6:.2f}'.format(ROIName.ljust(17), np.mean(DVH), PVDR_[0], PVDR_[1], s_index, c_index, h_index)
-
-        pdf.output('./tmp/table_DVH.pdf','F')
-        pdf2.output('./tmp/table_index.pdf','F')
-        print '\nTables saved!'
-
-	print('\n')
 
 	ax8.set_ylabel('Volume')
 	ax8.set_xlabel('Dose (Gy)')
         ax8.legend(bbox_to_anchor=(1.02,1),loc='upper left', frameon=False)
-        #ax8.legend(title='average doses', bbox_to_anchor=(1.03,1),loc='upper left', frameon=False)
 	graph3.draw()
 	toolbar3.draw()
 	Update()
+
+def ROI_DVH_PTV():
+
+        print 'structure\t\tPVDR\t\ts_index (%)'
+
+        for ROI_index in range(1,N_ROI):
+
+	        ROIName = ROI_infos[ROI_index,0].decode('utf-8')
+	        isPTV = ROIName.upper().startswith('PTV')
+	        isCTV = ROIName.upper().startswith('CTV')
+	        isGTV = ROIName.upper().startswith('GTV')
+
+	        DVH = ROI_DVH(ROI_infos[ROI_index,:])
+	        #if(len(DVH)>0)and(DVH.max()>0)and( isPTV ):
+	        if(len(DVH)>0)and(DVH.max()>0)and( isGTV ):
+
+
+                        volume_ROI = ROI_3D(ROI_infos, ROI_index, tag='CROP')
+                        PVDR_ = PVDR(dosi[volume_ROI], 0.005*np.mean(DVH) )	                
+
+                        DVH_norm = DVH/np.mean(DVH) # normalize mean dose to 1
+                        s_index = np.std(DVH_norm)
+                        c_index_tmp = len( DVH[np.where(DVH_norm>=0.95)])
+                        c_index_tmp = 0.001*c_index_tmp*spacing_dosi[0]*spacing_dosi[1]*spacing_dosi[2]
+                        c_index = c_index_tmp/(0.001*np.sum(ROI_infos[ROI_index,6])*spacing[0]*spacing[1]*spacing[2])
+                        h_index = (np.percentile(DVH,98)-np.percentile(DVH,2))/np.percentile(DVH,50)
+
+                        print '{0}\t{1:.2f} Â± {2:.2f}\t{3:.1f}'.format(ROIName.ljust(17),  PVDR_[0], PVDR_[1], 100*s_index)
+
+def ExportDVH():
+	"""
+	Export DVH data
+	"""
+	types = [('text', '*.txt')]
+	filename = tkFileDialog.asksaveasfilename(initialdir = dir_ini+'output', initialfile='DVH',filetypes=types)
+
+        with open(filename, 'w') as f:
+                f.write('Dose, Volume (%)\n')
+
+                for ROI_index in range(1,N_ROI):
+		        ROIName = ROI_infos[ROI_index,0].decode('utf-8')
+                        try:
+                                f.write('\nStructure: {0}\n'.format(ROIName))
+                                for i,j in zip(DVHData[ROI_index][1], DVHData[ROI_index][0]):   f.write('{0:.3f}, {1:.2f}\n'.format(i,100*j))
+                        except Exception:	pass
+
+        print('DVH saved !')
 
 def ROI_DVH(array,tag='dosi'): 
 	"""
@@ -272,6 +264,7 @@ def ROI_DVH(array,tag='dosi'):
 	ROI_color = array[5]
 
         coordinates = np.dstack(np.meshgrid(np.arange(dim_y_dosi), np.arange(dim_z_dosi))).reshape(-1,2)
+
         # scale vertices coordinates to voxel unit
         x_s = (x/spacing_dosi[2]).astype(int) 
         y_s = (y/spacing_dosi[1]).astype(int)
@@ -371,36 +364,8 @@ def ROI_3D(ROI_infos, index, tag=None):
 			if ( 1.*np.sum(volume_ROI[slice_,:,:])/np.sum(volume_ROI[slice_-1,:,:])<=0.05 ):
 				if( 1.*np.sum(volume_ROI[slice_,:,:])/np.sum(volume_ROI[slice_+1,:,:])<=0.05 ):	
 					volume_ROI[slice_,:,:] = volume_ROI[slice_+1,:,:]
-					#print slice_
-
-	#print np.sum(volume_ROI)
-
-	#import cv2
-	#for i in range(dim_y):	volume_ROI[:,i,:] = cv2.blur(volume_ROI[:,i,:],(2,2))
-	#for i in range(dim_x):	volume_ROI[:,:,i] = cv2.blur(volume_ROI[:,:,i],(2,2))
 
 	return volume_ROI
-
-def Save_volume_ROI():
-	"""
-	Save the sum of each ROI volume as a .mhd file
-	"""
-	tmp = np.ones((dim_x,dim_y,dim_z))
-	if (ROI_open==True)and(ROI_show==True):	
-		for ROI_index in range(N_ROI):	tmp = tmp + ROI_infos[ROI_index,6]
-		#tmp = ROI_infos[0,6]
-	tmp = dosi
-	types = [('MHD files', '*.mhd')]
-
-	f = tkFileDialog.asksaveasfilename(initialdir = dir_ini, filetypes=types)
-	itkimage = sitk.GetImageFromArray(tmp.astype(np.int16)) # for big images
-	#itkimage = sitk.GetImageFromArray(tmp)
-	itkimage.SetSpacing([spacing[2],spacing[1],spacing[0]])
-	itkimage.SetOrigin([origin[2],origin[1],origin[0]])
-	writer = sitk.ImageFileWriter()
-   	writer.SetFileName(f)
-  	writer.Execute(itkimage)
-	print('File saved successfully!')
 
 def CropDosi(ROI_index = 0): 
 	"""
@@ -421,3 +386,4 @@ def CropDosi(ROI_index = 0):
 	Update_all()
 
 	print 'Dosimetry cropped'
+
