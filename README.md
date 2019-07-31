@@ -10,8 +10,7 @@ A visualization tool distributed for Linux that can be used to:
 
 <img src="https://github.com/PierreLansonneur/Viewer/blob/master/output/capture.jpg" width="400" />
 
-#### launch the viewer 
-`python Main.py`
+#### launch the viewer: `python Main.py`
 
 #### Dependencies
 - Python 2.7
