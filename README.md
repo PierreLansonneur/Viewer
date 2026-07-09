@@ -1,48 +1,57 @@
-# Viewer
+A visualization tool to:
 
-A visualization tool distributed for Linux that can be used to:
+- Display CT DICOM files,
+- Display RT-Dose files,
+- Display RT-Struct files,
+- Display dose and dose-rate distributions,
+- Convert protontherapy RT-PLAN to TOPAS MC files.
 
-- Visualize CT DICOM files,
-- Import RT-Dose files,
-- Import RT-Struct files,
-- Import RT-PLAN files,
-- Create TOPAS MC files for PBS and DS.
+<img src="https://github.com/PierreLansonneur/Viewer/screenshot.png" width="400" />
 
-<img src="https://github.com/PierreLansonneur/Viewer/blob/master/output/capture.jpg" width="400" />
+### Getting Started
+* Install python 3.10 (e.g. from: https://www.python.org/downloads/windows/).
+* Clone the repo:
+~~~ 
+git clone ssh://tfs-app.vms.ad.varian.com:22/VMS/1-VMS/_git/TPMS.Proton.FlashTools
+~~~
+* Create the virtual environment and install necessary libraries:
+~~~
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+~~~
+* Launch the viewer with:
+~~~
+python Viewer.py
+~~~
 
-#### launch the viewer: `python Main.py`
-
-#### Dependencies
-- Python 2.7
-- Tkinter `sudo apt-get install python-tk`
-- pyDICOM `pip install pydicom`
-- SimpleITK `pip install SimpleITK`
-- vtk `pip install vtk`
-
-### Image navigation
-The file menu allows you to open Dicom files (.dcm), dicom series or a metaimages (.mhd). Once opened, three different views (axial, sagittal and coronal plane) are displayed on the axes. You can navigate through the different slices using either the mouse scroll or the three sliders on the viewer side.
-To zoom/unzoom on the images, press right-click and move the mouse on the corresponding axis. To move the images, you may press left-click and move the mouse on the corresponding axis. The image orientation can be changed either by double clicking on the axis or via the Edit >> Rotate menu.
-The colorscale limits can be set either to ‘Hounsfield’ (from -1000 HU to 2000 HU for CT images) or to ‘Auto’ (for any other type) via the Scale menu. 
+### Import CT series
+Open a dicom series (CTRL + O) by navigating through the folder containing the DICOM files. 
+Once opened, three different views (axial, sagittal and coronal plane) are displayed on the axes. 
+You can navigate through the different slices using either the mouse scroll or the three sliders on the viewer side.
+To zoom/unzoom on the images, press right-click and move the mouse on the corresponding axis.
+1D profiles along a line can be visualized by pressing the 'ctrl' key and click on the corresponding axis.
 
 ### Import RT-dose files
-Once a CT is opened, RT-Dose files can be imported via the File >> Import dosimetry menu. The isododose contours appear then on top of the image. To visualize the dose matrix as a color gradient, set instead the display option to ‘gradient’ in the Tool >> Isodoses menu.
+Once a CT is opened, RT-Dose files can be imported via File >> Import Dose.
+The colorbar range can be set via the Options menu.
 
 ### Import RT-struct files
-Once a CT is opened, DICOM RT-Struct files can be imported via the Structures >> Import structures menu. The names and colors of the structures imported can be visualized in the More >> File infos window. Once a RT-Dose file and a DICOM RT-Struct file are opened, you may access to the following tools: 
--	compute DVH: Calculates the cumulative DVH for every structures
--	crop Dosimetry: Crop the dose matrix to the extent of the external contour.
--	normalize dosi to PTV dose: Normalize the dose matrix such that the average dose is equal to 100 in a structure whose the name contains ‘PTV’.
- 
-### Import RT-Plan files
-Once a CT is opened, protontherapy DICOM RT-Plan files can be imported via the File >> Open RP file menu. The interface supports files intended for:
--	Passive Scattering: The collimator contour and compensator thickness are shown for each field (BEV).
--	Pencil Beam Scanning: The spots position and energy are shown for each field (BEV).
- 
-For each fields, several informations are retrieved such as the range shifter, gantry and table angles, number of spots, etc… For PBS files, you can moreover create a TOPAS MC simulation file for each field. The file is made to be interfaced with the ICPO gantry nozzle geometry (see https://github.com/PierreLansonneur/TOPAS_Gantry for public version of the code). The dose matrix has a default resolution of 0.5 x 0.5 x 0.5 mm3 and the size can be adjusted with the slider
+Once a CT is opened, DICOM RT-Struct files can be imported via Structures >> Import Structures.
+Once a RT-Dose file and a DICOM RT-Struct file are opened, you can compute the DVHs for the ROIs selected in the Structures menu.
 
-### Miscellaneous tools
-- Iso-surface: Users can visualize files with 3D rendering using the Tools >> iso surface window vtk tool. If only the CT is shown, the iso-suface corresponding to the value selected is displayed. If the isodoses are shown, the iso-surface value is interpreted as the percent of the maximum of the dose matrix. If the structures are shown, the external contour is displayed. 
-
--	Gamma index analysis: Dose matrices can be compared with the gamma index tool in Tools >> Gamma. To compare two matrices, load first one matrix with ‘Open File’ and the other via ‘Import dosimetry’. Default criterion is 3% / 3mm.
+### Dose-Rate visualization tools
+To unlock dose-rate related features, launch the viewer by specifying the field IDs:
+~~~
+python Viewer.py -fields "Field 1" "Field 2" "Field 3" "Field 4" "Field 5"
+~~~
+The dose and dose-rate distributions in DICOM format can then be imported via File >> Import Dose and Dose-Rate.
+The dose (respectively dose-rate) distribution needs to be in DICOM format and named 'RD.Dose_ID.dcm' (resp. 'RD.DoseRate_ID.dcm'), where ID is the field ID.
+For indivudal fields, one can then display the dose-rate distributions, or compute the Dose-Rate Volume Histograms (DRVH) for the ROIs selected in the Structures menu.
+A minimum dose-rate can be specified in the Options menu to see only the dose delivered above this threshold.
+If a minimum dose-rate is specified, one can plot the Dose-Rate Dose Volume Histograms (DR-DVH) together with the regular DVH via the Tools menu.
+The 2D histogram of dose and dose-rate for all fields combined can moreover be shown via the Tools menu.
  
--	Profiles: 1D profiles along a line can be visualized using the ‘Tool >> Profile’ widget. Select the line for which you want to show the distribution by pressing the ‘ctrl’ key and click on the corresponding axis. 
+### Convert RT-Plan to TOPAS MC files
+If the field IDs are specified, protontherapy DICOM RT-Plan files can be imported via File >> Open RP file. The interface only supports files intended for Pencil Beam Scanning. 
+For each field, a TOPAS MC simulation file can be exported based on the informations in the file, such as the range shifter, gantry and table angles, number of spots, etc…
