@@ -6,7 +6,7 @@ A visualization tool to:
 - Display dose and dose-rate distributions,
 - Convert protontherapy RT-PLAN to TOPAS MC files.
 
-<img src="https://github.com/PierreLansonneur/Viewer/screenshot.png" width="400" />
+<img width="1920" height="1032" alt="screenshot" src="https://github.com/user-attachments/assets/e8a93f70-5ee6-4332-b830-560207a60b91" />
 
 ### Getting Started
 * Install python 3.10 (e.g. from: https://www.python.org/downloads/windows/).
