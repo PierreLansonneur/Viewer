@@ -12,7 +12,7 @@ A visualization tool to:
 * Install python 3.10 (e.g. from: https://www.python.org/downloads/windows/).
 * Clone the repo:
 ~~~ 
-git clone ssh://tfs-app.vms.ad.varian.com:22/VMS/1-VMS/_git/TPMS.Proton.FlashTools
+git clone https://github.com/PierreLansonneur/Viewer.git
 ~~~
 * Create the virtual environment and install necessary libraries:
 ~~~
