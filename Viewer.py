@@ -25,16 +25,17 @@ import multiprocessing as mp
 # from RP2TOPAS_IBA import CreateTopasFilePBS
 from RP2TOPAS_ProBeam import CreateTopasFilePBS
 import cv2
-import ctypes
 import json
+import ctypes
 
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Varian.FLASH.Viewer.1.0')
+if sys.platform == "win32": ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Varian.FLASH.Viewer.1.0')
+    
 mpl.rcParams['savefig.dpi'] = 200
 mpl.rc('font', **{'family':'sans-serif','weight':'normal','size':10})
-    
-CURRENT_PATH = os.path.dirname(os.path.abspath(sys.argv[0])) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
-ICONS_PATH = os.path.join(CURRENT_PATH, 'icons')
 
+CURRENT_PATH = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(__file__) # PyInstaller bundle or normal script
+ICONS_PATH = os.path.join(CURRENT_PATH, 'icons')
+    
 def AForBBetween(a, b, bmin=None, bmax=None):
     """ return array a with b between bmin and bmax """
     
@@ -49,13 +50,15 @@ def openPixmap(fname, color=QtGui.QColor(255, 255, 255)):
     result = QtGui.QPixmap(base.size())
     result.fill(QtCore.Qt.transparent)
     painter = QtGui.QPainter(result)
-    painter.drawPixmap(0, 0, base)  # draw original image (for alpha mask)
+    painter.drawPixmap(0, 0, base) # draw original image (for alpha mask)
     painter.setCompositionMode(QtGui.QPainter.CompositionMode_SourceIn)
-    painter.fillRect(result.rect(), color)  # apply color while keeping alpha
+    painter.fillRect(result.rect(), color) # apply color while keeping alpha
     painter.end()
     return result
 
 def openIcon(fname, color=QtGui.QColor(255, 255, 255)): return QtGui.QIcon(openPixmap(fname, color)) # default: white
+
+def throwError(message): RTErrorDialog(message).exec()
 
 class Cosmo():
     """ Cosmo image class """
@@ -95,20 +98,25 @@ class RTGeneralVolume():
         self.dim = [1, 1, 1] # dimensions
         self.volume = np.zeros((self.dim)) # volume
         self.orientation = 'HFS' # orientation
+        self.R = np.eye(3) # orientation matrix (https://dicom.innolitics.com/ciods/rt-dose/image-plane/00200037)
         self.patientName = '' # patient's name
         self.label = '' # label (colormap title)
         self.cmin, self.cmax = None, None # colorbar range
+        
+    def ijk2xyz(self, ijk): return np.array(self.origin) + self.R @ (np.asarray(ijk) * self.spacing)
     
-    def i2mm(self, i, ax): return self.origin[ax] + i * self.spacing[ax]
+    def xyz2ijk(self, xyz): return (self.R @ (np.array(xyz) - np.array(self.origin))) / np.array(self.spacing) # R is its own inverse(?)
+        
+    def i2mm(self, i, ax): return self.ijk2xyz([i,i,i])[ax] # only for diagonal matrix... TODO [i,i,i] -> [i,j,k]
     
-    def mm2i(self, z, ax): return round((z - self.origin[ax]) / self.spacing[ax])
+    def mm2i(self, z, ax): return round(self.xyz2ijk([z,z,z])[ax]) # only for diagonal matrix... TODO [z,z,z] -> [x,y,z]
     
     def image(self, ax, idx): return np.take(self.volume, idx, axis=[2, 1, 0][ax])
     
-    def extent(self, ax): return [ext for i in range(3) if i != ax for ext in [self.i2mm(j,i) - 0.5*self.spacing[i] for j in [0, self.dim[i]]]] # image extent [mm]
+    def extent(self, ax): return [ext for i in range(3) if i != ax for ext in [self.ijk2xyz(ijk)[i] for ijk in [[0,0,0], self.dim]]] # image extent [mm]
         
     def mm2voxel(self, x, y, ax): return [self.mm2i(z,i) for z,i in zip([y,x],[k for k in [2,1,0] if k != ax])] # mm to voxel
-    
+        
     def bbox2RSExtentmm(self, bbox, ax): return [ext for i in range(3) if i != ax for ext in [self.i2mm(j,i) - 0.5*self.spacing[i] for j in [min(bbox[i]), max(bbox[i])]]] # bounding box limits to mm
         
     def RSExtentmm2bbox(self, RS, ax=0):
@@ -128,6 +136,64 @@ class RTCTVolume(RTGeneralVolume):
         self.cmap = P.get_cmap('Greys_r') # colormap
         self.volume = -1000. * np.ones((self.dim)) # volume
         self.label = 'Hounsfield Unit (HU)'
+        self.dicoms = [] # list of dicoms
+        
+    def OpenDicomSerie(self, filedir=None):
+        """ Open a dicom serie """
+        
+        if not filedir: return
+        
+        self.dicoms = [pydicom.dcmread(os.path.join(filedir,f)) for f in os.listdir(filedir) if f.endswith(".dcm")]
+        self.dicoms = [ds for ds in self.dicoms if ds.Modality=='CT']
+        studyInstanceUIDs = np.unique([ds.StudyInstanceUID for ds in self.dicoms])
+        if len(studyInstanceUIDs) > 1: self.dicoms = [ds for ds in self.dicoms if ds.StudyInstanceUID==studyInstanceUIDs[0]]
+        
+        iop = self.dicoms[0].ImageOrientationPatient
+        self.R = np.array([iop[:3], iop[3:], np.cross(iop[:3], iop[3:])])
+        if np.any(self.R[~np.eye(3, dtype=bool)] > 1E-12): return throwError(f'\nOrientation is not supported:\n{self.R}')
+        self.dicoms = sorted(self.dicoms, key=lambda ds: np.dot(np.array(ds.ImagePositionPatient, dtype=float), np.cross(iop[:3], iop[3:])))
+        
+        self.volume = np.asarray([ds.pixel_array for ds in self.dicoms], dtype=float)
+        self.dim = [*self.dicoms[0].pixel_array.shape, len(self.dicoms)]
+        # self.spacing = [float(s) for s in [*self.dicoms[0].PixelSpacing, self.dicoms[0].SliceThickness]]
+        self.spacing = [float(s) for s in [*self.dicoms[0].PixelSpacing, abs(np.diff([float(ds.ImagePositionPatient[2]) for ds in self.dicoms])[0])]]
+        self.origin = [float(ipp) for ipp in self.dicoms[0].ImagePositionPatient]
+        self.patientName = self.dicoms[0].PatientID
+        self.orientation = self.dicoms[0].PatientPosition
+        if "RescaleSlope" in self.dicoms[0]: self.volume *= float(self.dicoms[0].RescaleSlope)
+        if "RescaleIntercept" in self.dicoms[0]: self.volume += float(self.dicoms[0].RescaleIntercept)
+        
+        # self.volume[self.volume < -50] = -1000 # debug
+        
+        if self.volume.ndim != 3: return throwError(f'Only 3D patient images are supported (image dimension: {self.volume.ndim})')
+        
+        if not self.orientation in ["HFS", "HFP", "FFS", "FFP"]: return throwError(f'{self.orientation} orientation is not supported')
+        
+        print(f'\nCT serie:\t{filedir}\ndimensions:\t{self.dim}\norigin (mm):\t{self.origin}\nspacing (mm):\t{self.spacing}\norientation:\t{self.orientation}\nmatrix:\n{self.R}')
+        
+        self.is_opened = True
+        
+    def ExportDicomSerie(self, filedir):
+        """Export the currently loaded CT series as a folder of DICOM files."""
+        
+        if not self.is_opened: return
+        if not self.dicoms: return
+        
+        # ###### Debug #####
+        # for roi in self.myROISet.ROIs:
+            # if roi.name == "RIB":
+                # self.volume[roi.mask] = 0.
+
+        for i, ds in enumerate(self.dicoms):
+            
+            ds_copy = ds.copy()
+            img = self.volume[i,:,:].copy()
+            if "RescaleIntercept" in self.dicoms[0]: img -= float(self.dicoms[0].RescaleIntercept)
+            if "RescaleSlope" in self.dicoms[0]: img /= float(self.dicoms[0].RescaleSlope)
+            pydicom.pixels.utils.set_pixel_data(ds_copy, img.astype(self.dicoms[0].pixel_array.dtype), self.dicoms[0].PhotometricInterpretation, self.dicoms[0].BitsStored)
+            ds_copy.save_as(os.path.join(filedir, f'CT.{i:04d}.dcm'))
+        
+        print('CT exported')
         
 class RTDoseVolume(RTGeneralVolume):
     """ Generic class for dose and dose-rate """
@@ -141,7 +207,7 @@ class RTDoseVolume(RTGeneralVolume):
     def updateColorbarRange(self, cmin=None, cmax=None):
         """ update colorbar range """
         
-        self.cmax = np.percentile(self.volume, 99.999) if cmax is None else cmax
+        self.cmax = np.percentile(self.volume, 99.9999) if cmax is None else cmax
         self.cmin = 0.01 * self.cmax if cmin is None else cmin
         
     def slice_index(self, CT, ax, i):
@@ -158,19 +224,17 @@ class RTDoseVolume(RTGeneralVolume):
         if filename.endswith('.dcm') or filename.endswith('.data'):
 
             ds = pydicom.dcmread(filename, force=True)
-            ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+            # ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+            iop = ds.ImageOrientationPatient
+            self.R = np.array([iop[:3], iop[3:], np.cross(iop[:3], iop[3:])])
+            if np.any(self.R[~np.eye(3, dtype=bool)] > 1E-12): return throwError(f'\nOrientation is not supported:\n{self.R}')
             self.spacing = [float(ds.PixelSpacing[1]), float(ds.PixelSpacing[0]), abs(float(ds.GridFrameOffsetVector[1] - ds.GridFrameOffsetVector[0]))]
             self.volume = float(ds.DoseGridScaling) * ds.pixel_array
             self.dim = list(self.volume.shape)[::-1]
             self.origin = ds.ImagePositionPatient
             self.patientName = ds.PatientID
             
-            print(f'\nfilename:\t{filename}\ndimensions:\t{self.dim}\norigin (mm):\t{self.origin}\nspacing (mm):\t{self.spacing}')
-            
-            X = ds.ImageOrientationPatient[0:3]
-            Y = ds.ImageOrientationPatient[3:6]
-            R = np.array([X, Y, np.cross(X, Y)])
-            if np.any(R[~np.eye(R.shape[0], dtype=bool)] > 1E-12): print(f'\nOrientation is not supported:\n{R}'); return
+            print(f'\nfilename:\t{filename}\ndimensions:\t{self.dim}\norigin (mm):\t{self.origin}\nspacing (mm):\t{self.spacing}\nmatrix:\n{self.R}')
             
             self.is_opened = True
    
@@ -235,7 +299,7 @@ class RTPlan():
             for vol, name in zip([f.Dose, f.DoseRate], [f'\RD.Dose_{f.ID}', f'\RD.DoseRate_{f.ID}']):
                 # filename = filedir + name + '.data'
                 filename = filedir + name + '.dcm'
-                if not os.path.isfile(filename): self.parent.ThrowError(f'{filename} was not found'); return
+                if not os.path.isfile(filename): return throwError(f'{filename} was not found')
                 vol.Open(filename)
                 
         self.is_opened = True
@@ -280,7 +344,7 @@ class RTSpotlist():
         self.MU = MU # Monitor Units (MU)
         self.N = len(x) # number of spots
         
-def get_roi_binary_mask(roi, dim, origin, spacing, contours=None, dx=0., dy=0.):
+def get_roi_binary_mask(roi, dim, origin, spacing, R, contours=None, dx=0., dy=0.):
     """ Efficiently calculate the binary mask for a ROI with possibly multiple contours. """
     
     idx = np.zeros(dim[::-1], dtype=bool)
@@ -290,16 +354,18 @@ def get_roi_binary_mask(roi, dim, origin, spacing, contours=None, dx=0., dy=0.):
     if len(contours) > 1: # avoid markers
 
         for cs in contours:
-            x = (np.asarray(cs.x) - origin[0]) / spacing[0] + 0.5 + dx
-            y = (np.asarray(cs.y) - origin[1]) / spacing[1] + 0.5 + dy
-            z = round( (cs.z - origin[2]) / spacing[2] )
-            if 0 <= z < dim[2]: idx[z] ^= cv2.fillPoly(np.zeros((dim[1], dim[0]), dtype=np.uint8), [(np.c_[x,y]).astype(np.int32)], 1).astype(bool)
+            pts = np.c_[cs.x, cs.y, np.full_like(cs.x, cs.z)]
+            ijk = (pts - np.asarray(origin)) @ R.T / np.asarray(spacing)
+            ii = ijk[:, 0] + 0.5 + dx
+            jj = ijk[:, 1] + 0.5 + dy
+            k = round(ijk[0, 2])
+            if 0 <= k < dim[2]: idx[k] ^= cv2.fillPoly(np.zeros((dim[1], dim[0]), dtype=np.uint8), [(np.c_[ii, jj]).astype(np.int32)], 1).astype(bool)
             
     return idx
     
-def get_roi_fraction_mask(roi, dim, origin, spacing, contours=None):
+def get_roi_fraction_mask(roi, dim, origin, spacing, R, contours=None):
     
-    return sum([ get_roi_binary_mask(roi, dim, origin, spacing, contours, dx, dy) for dx in [-1,-0.5,0,0.5,1] for dy in [-1,-0.5,0,0.5,1]]).astype(float) / 25
+    return sum([ get_roi_binary_mask(roi, dim, origin, spacing, R, contours, dx, dy) for dx in [-1,-0.5,0,0.5,1] for dy in [-1,-0.5,0,0.5,1]]).astype(float) / 25
     
 class RTROISet():
     """ Structure Set """
@@ -309,7 +375,6 @@ class RTROISet():
         self.parent = parent # main window
         self.is_opened = False # is opened?
         self.ROIs = [] # ROIs
-        self.selected = [] # list of ROI selected
         
     def OpenDicom(self, filepath=None):        
         """ Open a RT-struct file with .dcm extension """
@@ -328,10 +393,12 @@ class RTROISet():
             self.ROIs.append( RTROI(rs.ROIName, color, contours) )
             
         if self.parent.CT.is_opened:
-            fun = partial(get_roi_binary_mask, dim=self.parent.CT.dim, origin=self.parent.CT.origin, spacing=self.parent.CT.spacing, contours=None, dx=0., dy=0.)
+            
+            fun = partial(get_roi_binary_mask, dim=self.parent.CT.dim, origin=self.parent.CT.origin, spacing=self.parent.CT.spacing, R=self.parent.CT.R, contours=None, dx=0., dy=0.)
             self.ROIs = sorted(self.ROIs, key=lambda roi: -len(roi.contours)) # treat large ROIs first
             with mp.Pool() as pool: masks = pool.map(fun, self.ROIs)
             for mask,roi in zip(masks, self.ROIs): roi.mask = mask
+            for mask,roi in zip(masks, self.ROIs): roi.volume_cc = np.sum(mask) * np.prod(self.parent.CT.spacing) * 1E-3
         
             # #####
             # ptv = next(roi.mask for roi in self.ROIs if roi.name == "PTV")
@@ -340,12 +407,22 @@ class RTROISet():
             # print(f'\nPTV volume:\t{np.sum(ptv)} voxels')
             # print(f'Parotid Left:\t{np.sum(oar)} voxels')
             # print(f'Intersection:\t{inter} voxels')
-            # print(f'Intersection / PTV: {100.0 * inter / np.sum(ptv) :.2f} %')            
+            # print(f'Intersection / PTV: {100.0 * inter / np.sum(ptv) :.2f} %')
+            
+            # ####
+            # import trimesh
+            # from skimage.measure import marching_cubes
+            # body = next(roi for roi in self.ROIs if roi.name == "CONTOUR EXTERNE")
+            # verts, faces, _, __ = marching_cubes(body.mask, level=0.5, spacing=tuple(self.parent.CT.spacing[::-1]))
+            # mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=True)
+            # trimesh.smoothing.filter_taubin(mesh,lamb=0.5,nu=-0.53,iterations=50)
+            # mesh.fill_holes()
+            # mesh.fix_normals()
+            # mesh.export("body.stl")
             
         self.is_opened = True
         self.ROIs = sorted(self.ROIs, key=lambda roi: roi.name) # alphabetical order            
-        self.parent.fill_ROImenu()            
-        self.selected = self.ROIs
+        self.parent.fill_ROImenu()
         self.parent.update_all_axes()
     
 class RTROI():
@@ -358,7 +435,9 @@ class RTROI():
         self.contours = contours # list of contours
         self.dvh = dict() # DVH
         self.drvh = dict() # DRVH
-        self.mask = None
+        self.mask = None # 3D binary mask
+        self.volume_cc = 0. # volume [cc]
+        self.visible = True # is visible?
         
 class RTROIContour():
 
@@ -379,13 +458,14 @@ class RTMainWindow(QMainWindow):
         self.myROISet = RTROISet(self) # Structure set
         self.profile_show = False # profile tool enabled
         self.ctrl = False # is control key pressed?
+        self._right_button_pressed = False # is right click pressed?
         self.drmin = None # min dose rate threshold [Gy/s]
         self.drmax = None # max dose rate threshold [Gy/s]
         self.Dmin = 0.1 # min dose threshold [Gy]
         self.fig = [] # list of figures
         self.ax  = [] # list of axes
+        self.ct_img  = [None,None,None] # list of ct images
         self.w = [] # list of sliders
-        self.moved = [] # did the sliders move?
         self.x_lim = [(0,1),(0,1),(0,1)] # x axes limits
         self.y_lim = [(0,1),(0,1),(0,1)] # y axes limits
         self.RS = [] # list of rectangle selectors
@@ -423,7 +503,6 @@ class RTMainWindow(QMainWindow):
             self.fig.append(fig)
             self.ax.append(ax)
             self.w.append(w)
-            self.moved.append(True)
             self.RS.append(rs)
         
         ### colorbar
@@ -487,7 +566,7 @@ class RTMainWindow(QMainWindow):
 
         ### structures menu
         self.roimenu = menubar.addMenu(' Structures ')
-        self.roimenu.addAction(QtGui.QAction('Unselect All', self, checkable=True, triggered=self.ROI_unselectAll))
+        self.roimenu.addAction(QtGui.QAction('Select All', self, checkable=True, triggered=self.ROI_selectAll))
         self.roimenu.addSeparator()
         self.roimenu.triggered.connect(self.ROI_selection)
 
@@ -515,7 +594,7 @@ class RTMainWindow(QMainWindow):
             for f in self.args.fields: self.fieldmenu.addAction(ag3.addAction(QtGui.QAction(f, self, checkable=True)))            
             self.fieldmenu.triggered.connect(self.Field_selection)
 
-        ### Infos, Help and About actions
+        ### Infos and About actions
         menubar.addAction(QtGui.QAction(' Infos ', self, triggered=self.Infos))
         menubar.addAction(QtGui.QAction(' ? ', self, triggered=self.About))
         
@@ -536,26 +615,8 @@ class RTMainWindow(QMainWindow):
         if not filedir: return
         self.datadir = filedir
         
-        dicoms = [pydicom.dcmread(os.path.join(filedir,f)) for f in os.listdir(filedir) if f.endswith(".dcm")]
-        dicoms = [ds for ds in dicoms if ds.Modality=='CT']
-        dicoms = sorted(dicoms, key=lambda ds: float(ds.ImagePositionPatient[2]))
+        self.CT.OpenDicomSerie(filedir)
         
-        self.CT.volume = np.asarray([ds.pixel_array for ds in dicoms], dtype=float)
-        self.CT.dim = [*dicoms[0].pixel_array.shape, len(dicoms)]
-        self.CT.spacing = [float(s) for s in [*dicoms[0].PixelSpacing, dicoms[0].SliceThickness]]
-        self.CT.origin = [float(ipp) for ipp in dicoms[0].ImagePositionPatient]
-        self.CT.patientName = dicoms[0].PatientID
-        self.CT.orientation = dicoms[0].PatientPosition
-        if "RescaleSlope" in dicoms[0]: self.CT.volume *= float(dicoms[0].RescaleSlope)
-        if "RescaleIntercept" in dicoms[0]: self.CT.volume += float(dicoms[0].RescaleIntercept)
-        
-        if self.CT.volume.ndim != 3: self.ThrowError(f'Only 3D patient images are supported (image dimension: {self.CT.volume.ndim}).'); return
-        
-        if not self.CT.orientation in ["HFS", "HFP", "FFS", "FFP"]: self.ThrowError(f'Orientation is not supported\n{R}'); return
-        
-        print(f'\nCT serie:\t{filedir}\ndimensions:\t{self.CT.dim}\norigin (mm):\t{self.CT.origin}\nspacing (mm):\t{self.CT.spacing}\norientation:\t{self.CT.orientation}')
-        
-        self.CT.is_opened = True
         self.cosmo = Cosmo(self, self.CT.orientation, CURRENT_PATH)
         self.bbox = [[0, self.CT.dim[i]] for i in range(3)]
         self.x_lim = [(self.CT.extent(i)[:2]) for i in range(3)]
@@ -567,8 +628,8 @@ class RTMainWindow(QMainWindow):
         match self.CT.orientation: # foot-to-head convention
             case 'HFS': self.invert_axis(2,'y');  self.invert_axis(0,'x')
             case 'HFP': self.invert_axis(2,'y');  self.invert_axis(0,'x')
-            case 'FFS': self.invert_axis(1,'xy'); self.invert_axis(0,'x')
-            case 'FFP': self.invert_axis(0,'xy'); self.invert_axis(1,'xy'); self.invert_axis(2,'xy')
+            case 'FFS': self.invert_axis(1,'x'); self.invert_axis(0,'x'); self.invert_axis(2,'y')
+            case 'FFP': self.invert_axis(0,'x'); self.invert_axis(1,'x'); self.invert_axis(2,'xy')
             
         self.update_all_axes()
 
@@ -580,7 +641,7 @@ class RTMainWindow(QMainWindow):
             if not filepath: return
             self.datadir = os.path.dirname(filepath)
         
-        if not (filepath.endswith('.dcm') or filepath.endswith('.data')): self.ThrowError(f'Extension not supported'); return
+        if not (filepath.endswith('.dcm') or filepath.endswith('.data')): return throwError(f'Extension not supported')
         
         return filepath 
         
@@ -622,7 +683,7 @@ class RTMainWindow(QMainWindow):
 
             case 2: # CT + dose rate
                 if len(self.plan.selectedFields) > 1:
-                    self.ThrowError('Dose-rate cannot be displayed for multiple fields.')
+                    throwError('Dose-rate cannot be displayed for multiple fields.')
                     self.fieldmenu.actions()[1].trigger() # select first field
                     return
                 else:
@@ -651,26 +712,23 @@ class RTMainWindow(QMainWindow):
             icon.addPixmap(openPixmap(ICONS_PATH + "\\square_FILL0.png", QtGui.QColor(125, 125, 125)), QtGui.QIcon.Normal, QtGui.QIcon.Off)
             action = self.roimenu.addAction(icon, roi.name)
             action.setCheckable(True)
-            action.setChecked(True)            
+            action.setChecked(True)
+        
+        self.roimenu.actions()[0].setChecked(False)
             
     def ROI_selection(self, action):
         """ triggered when ROIs are selected from menu """
         
-        self.myROISet.selected = [ roi for roi,action in zip(self.myROISet.ROIs, self.roimenu.actions()[1:]) if action.isChecked() ]
+        for roi,action in zip(self.myROISet.ROIs, self.roimenu.actions()[1:]): roi.visible = action.isChecked()
         self.update_all_axes()
         self.roimenu.exec()
-
-    def ROI_unselectAll(self):
+        
+    def ROI_selectAll(self):
         """ (un)select all the ROI from the ROI menu """
 
-        if self.roimenu.actions()[0].isChecked():
-            for act in self.roimenu.actions()[1:]: act.setChecked(False)            
-            self.myROISet.selected = []
-            self.roimenu.actions()[0].setText('Select All')
-        else:
-            for act in self.roimenu.actions()[1:]: act.setChecked(True)
-            self.myROISet.selected = self.myROISet.ROIs
-            self.roimenu.actions()[0].setText('Unselect All')
+        for roi,action in zip(self.myROISet.ROIs, self.roimenu.actions()[1:]):
+            roi.visible = self.roimenu.actions()[0].isChecked()
+            action.setChecked(self.roimenu.actions()[0].isChecked())
             
         self.update_all_axes()
 
@@ -684,9 +742,16 @@ class RTMainWindow(QMainWindow):
         """ run when mouse button is clicked """
         
         if event.button == 3: # right click
-            popMenu = QMenu(self) # show the context menu at the cursor position
-            popMenu.addAction(QtGui.QAction('Export As ...', self, triggered=partial(self.export, event.canvas) ))
-            popMenu.popup(QtGui.QCursor().pos())
+            
+            if event.canvas in self.fig:
+                self._right_button_pressed = True
+                self.xrc, self.yrc = event.x, event.y
+                self.ww = abs(self.CT.cmax - self.CT.cmin) # current window width
+                self.wl = 0.5 * (self.CT.cmax + self.CT.cmin) # current window level
+            else:
+                popMenu = QMenu(self) # show the context menu at the cursor position
+                popMenu.addAction(QtGui.QAction('Export As ...', self, triggered=partial(self.export, event.canvas) ))
+                popMenu.popup(QtGui.QCursor().pos())
             
         elif self.ctrl and not self.cropAction.isChecked():
             self.xp1, self.yp1, self.profile_show, self.profile_ax = event.xdata, event.ydata, True, event.inaxes
@@ -705,7 +770,18 @@ class RTMainWindow(QMainWindow):
         """ run when mouse is moved """
         
         if event.inaxes is None: return
-
+        
+        ### right-click: update CT windowing
+        if (event.button == 3) and self._right_button_pressed:
+            ww = self.ww * (1 + (event.x - self.xrc) / self.xrc) # scale window width
+            wl = self.wl + 500 * (event.y - self.yrc) / self.yrc # offset window level
+            self.CT.cmin, self.CT.cmax = wl - 0.5 * ww, wl + 0.5 * ww
+            
+            self.update_colorbar()
+            for i, artist in enumerate(self.ct_img):
+                if artist is not None: artist.set_clim(self.CT.cmin, self.CT.cmax)
+                self.fig[i].figure.canvas.draw_idle()
+            
         ### update profile
         if self.ctrl and self.profile_show and event.button == 1:
 
@@ -730,7 +806,7 @@ class RTMainWindow(QMainWindow):
     def on_click_released(self,event):
         """ run when mouse click is released """
         
-        if event.button == 3: return # right click
+        if event.button == 3: self._right_button_pressed = False # right click
         
         if self.profile_show:
             self.xp2, self.yp2 = event.xdata, event.ydata
@@ -776,8 +852,8 @@ class RTMainWindow(QMainWindow):
         else:
             with open(filename, 'w') as file:
                 match canvas:
-                    case self.tabWidget.dvh: data = {roi.name: roi.dvh for roi in self.myROISet.selected}
-                    case self.tabWidget.drvh: data = {roi.name: roi.drvh for roi in self.myROISet.selected}
+                    case self.tabWidget.dvh: data = {roi.name: roi.dvh for roi in self.myROISet.ROIs if roi.visible}
+                    case self.tabWidget.drvh: data = {roi.name: roi.drvh for roi in self.myROISet.ROIs if roi.visible}
                     case self.tabWidget.profile: data = {'x': self.profile[0].tolist(),'y': self.profile[1].tolist()}
                 file.write(json.dumps(data, sort_keys=True))
                     
@@ -798,16 +874,19 @@ class RTMainWindow(QMainWindow):
         if 'y' in what: self.y_lim[ax] = self.y_lim[ax][::-1]
         self.set_axis_limit(ax)
 
-    def update_all_axes(self):
-        """ Update all axes and colorbar """
-        
-        for i in range(3): self.update_axis(i, self.w[i].value())
+    def update_colorbar(self):
             
         self.cb.figure.gca().cla()
         vol = self.Data if self.display_option() > 0 else self.CT
         self.cb.figure.colorbar(mpl.cm.ScalarMappable(mpl.colors.Normalize(vol.cmin, vol.cmax), vol.cmap), cax=self.cb.figure.gca(), label=vol.label) # colorbar
         self.cb.figure.gca().yaxis.set_label_position('left')
         self.cb.figure.canvas.draw()
+
+    def update_all_axes(self):
+        """ Update all axes and colorbar """
+        
+        for i in range(3): self.update_axis(i, self.w[i].value())
+        self.update_colorbar()
         
     def update_axis(self, i, value):
         """ update the i-th axis according to its slider position value """
@@ -818,13 +897,12 @@ class RTMainWindow(QMainWindow):
             ax.axvline(x=self.CT.i2mm(self.w[x_ax].value(),x_ax), ls=':', c='w', alpha=0.5)
             ax.axhline(y=self.CT.i2mm(self.w[y_ax].value(),y_ax), ls=':', c='w', alpha=0.5)
 
-
         self.ax[i].cla() # Clear axes
         
         self.set_axis_limit(i)
         
         ### 1. CT
-        self.ax[i].imshow(self.CT.image(i, value), vmin=self.CT.cmin, vmax=self.CT.cmax, extent=self.CT.extent(i), cmap=self.CT.cmap, interpolation='none', origin='lower')
+        self.ct_img[i] = self.ax[i].imshow(self.CT.image(i, value), vmin=self.CT.cmin, vmax=self.CT.cmax, extent=self.CT.extent(i), cmap=self.CT.cmap, interpolation='none', origin='lower')
 
         ### 2. Dose / Dose-rate / Overlaps
         if self.plan.is_opened and (self.display_option() > 0):
@@ -840,14 +918,15 @@ class RTMainWindow(QMainWindow):
                 self.updateProfile(self.profile_ax)
         
         ### 4. Structures
-        for roi in self.myROISet.selected:
-            if i==2:
-                for cs in roi.contours:
-                    if self.CT.mm2i(cs.z, i) == value: self.ax[i].plot(cs.x, cs.y, c=roi.color, lw=1, marker=None if len(cs.x)>2 else '*')
-            else:
-                if roi.mask is not None:
-                    img = np.take(roi.mask, value, axis=[2, 1, 0][i])
-                    if True in img: self.ax[i].contour(img.astype(float), levels=[0.5], extent=self.CT.extent(i), colors=[roi.color], linewidths=1., origin='lower')
+        for roi in self.myROISet.ROIs:
+            if roi.visible:
+                if i==2:
+                    for cs in roi.contours:
+                        if self.CT.mm2i(cs.z, i) == value: self.ax[i].plot(cs.x, cs.y, c=roi.color, lw=1, marker=None if len(cs.x)>2 else '*')
+                else:
+                    if roi.mask is not None:
+                        img = np.take(roi.mask, value, axis=[2, 1, 0][i])
+                        if True in img: self.ax[i].contour(img.astype(float), levels=[0.5], extent=self.CT.extent(i), colors=[roi.color], linewidths=1., origin='lower')
                 
         if i==2: self.ax[i].text(0.05, 0.95, self.CT.patientName, va='top', transform=self.ax[0].transAxes, c='w') # Patient name
         
@@ -934,7 +1013,7 @@ class RTMainWindow(QMainWindow):
         skip = max(1, int(vol.spacing[2] / self.CT.spacing[2]))
         contours = [cs for cs in roi.contours if cs.z in zs[::skip]] if skip > 1 else roi.contours
         
-        return get_roi_binary_mask(roi, vol.dim, vol.origin, vol.spacing, contours)
+        return get_roi_binary_mask(roi, vol.dim, vol.origin, vol.spacing, vol.R, contours)
         
     def showDVH(self, option='DVH'):
         """ Display the Dose Volume Histogram of each structure selected. """
@@ -944,8 +1023,8 @@ class RTMainWindow(QMainWindow):
         def histogram(data): v = np.linspace(0,100,200); return [0, *np.percentile(data, v), data.max()], [100, *v[::-1], 0]
             
         if option == 'DRVH':
-            if len(self.plan.selectedFields) > 1: self.ThrowError('Dose-rate cannot be displayed for multiple fields.'); return
-            if not self.plan.selectedFields[0].DoseRate.is_opened: self.ThrowError('Open a dose-rate distribution first'); return
+            if len(self.plan.selectedFields) > 1: return throwError('Dose-rate cannot be displayed for multiple fields.')
+            if not self.plan.selectedFields[0].DoseRate.is_opened: return throwError('Open a dose-rate distribution first')
         
         match option:
             case 'DVH': canvas, tabidx = self.tabWidget.dvh, 1
@@ -959,7 +1038,7 @@ class RTMainWindow(QMainWindow):
         
         vol = self.plan.selectedFields[0].Dose if self.args.fields else self.Data
         
-        for c,roi in enumerate(self.myROISet.selected):
+        for c,roi in enumerate([r for r in self.myROISet.ROIs if r.visible]):
             
             if c > 15: continue
             
@@ -986,7 +1065,7 @@ class RTMainWindow(QMainWindow):
                         ax.plot(roi.drvh['bins'], roi.drvh['vals'], label=roi.name, color=roi.color)
 
                     case 'DDRVH':
-                        if not all([f.DoseRate.is_opened for f in self.plan.selectedFields]): self.ThrowError('Open a dose-rate distribution first'); return
+                        if not all([f.DoseRate.is_opened for f in self.plan.selectedFields]): return throwError('Open a dose-rate distribution first')
                         for i,f in enumerate(self.plan.selectedFields): ax.scatter(f.Dose.volume[mask], f.DoseRate.volume[mask], label=roi.name if i==0 else None, marker='.', color=roi.color)
 
         ax.legend(bbox_to_anchor=(1.02,1), loc='upper left', frameon=False)
@@ -1050,11 +1129,14 @@ class RTMainWindow(QMainWindow):
             layout.addWidget(gbox)
             
         if self.myROISet.is_opened:
-            
-            form = make_form()
-            for roi in self.myROISet.ROIs:
+
+            form = QGridLayout()
+            form.setVerticalSpacing(0)
+            for row, roi in enumerate(self.myROISet.ROIs):
                 rgb_color = ','.join(f'{int(255*i)}' for i in roi.color)
-                form.addRow(make_label('\u2B24', f'rgb({rgb_color})'), QLabel(roi.name))
+                form.addWidget(make_label('\u2B24', f'rgb({rgb_color})'), row, 0)
+                form.addWidget(QLabel(roi.name), row, 1)
+                form.addWidget(QLabel(f"{roi.volume_cc:.1f} cc"), row, 2)
                 
             sbox = QWidget()
             sbox.setLayout(form)
@@ -1071,8 +1153,6 @@ class RTMainWindow(QMainWindow):
         
         InfoWindow.setLayout(layout)      
         InfoWindow.exec()
-
-    def ThrowError(self, message): RTErrorDialog(message).exec()
     
 class RTGeneralDialog(QDialog):
 
@@ -1157,7 +1237,7 @@ class DRDialog(RTDialog):
         with suppress(ValueError): drmax = max(0., float(self.drmax.text()))
             
         if drmin and drmax:
-            if drmin >= drmax: self.parent.ThrowError(f'min dose rate must be smaller that max dose rate'); return
+            if drmin >= drmax: return throwError(f'min dose rate must be smaller that max dose rate')
             
         self.parent.tabWidget.ClearTab(self.parent.tabWidget.dvh)
         self.parent.drmin = drmin
@@ -1204,6 +1284,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)    
     app.setFont(QtGui.QFont('Segoe UI', 9))
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside6')) # qdarkstyle dark theme
+    app.setWindowIcon(QtGui.QIcon(CURRENT_PATH + "\\Icon.ico"))
     P.style.use('dark_background') # matplotlib dark theme
 
     parser = argparse.ArgumentParser(description=' ', prefix_chars='-+/')
@@ -1212,18 +1293,12 @@ if __name__ == '__main__':
     args.fields = natsorted(args.fields, alg=ns.IGNORECASE) if args.fields else None
     window = RTMainWindow(args)
     window.setWindowIcon(QtGui.QIcon(CURRENT_PATH + "\\Icon.ico"))
-    window.setStyleSheet("""QLabel {background-color : #252525}""")
         
     # patientID = 'Lung004'
     # window.OpenDicomSerie(rf'D:\Patients\{patientID}\CT')
     # window.myROISet.OpenDicom(rf'D:\Patients\{patientID}\RS.{patientID}.dcm')
-    # # window.OpenDose(rf'D:\Patients\{patientID}\MBRT\IM_1.0mm_200MeV_ctc4.0mm\RD.Optimized.dcm')
-    # window.plan.ImportDoseAndDoseRate(rf'D:\Patients\{patientID}\coarseIM_2mm_Square\WO_3Fx')
-    # # window.plan.OpenDicom(rf'D:\Patients\{patientID}\RN.Test.dcm')
-    
-    # window.OpenDicomSerie(rf'C:\dev\HN_TG244_DMAT_CONV_2A_ADS_ioe3-debug\2026-07-08_10-35-08\dicom')
-    # window.myROISet.OpenDicom(rf'C:\dev\HN_TG244_DMAT_CONV_2A_ADS_ioe3-debug\2026-07-08_10-35-08\dicom\RS.1.2.246.352.800.5258531985563228124.102485075693992585.dcm')
-    # window.OpenDose(r'C:\dev\HN_TG244_DMAT_CONV_2A_ADS.RD.dcm')
+    # window.OpenDose(rf'D:\Patients\{patientID}\MBRT\IM_1.0mm_200MeV_ctc4.0mm\RD.Optimized.dcm')
+    ## window.plan.ImportDoseAndDoseRate(rf'D:\Patients\{patientID}\coarseIM_2mm_Square\WO_3Fx')
     
     window.showMaximized() # full screen
     exit_code = app.exec()
